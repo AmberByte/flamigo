@@ -7,11 +7,27 @@ import (
 
 	flamigo "github.com/amberbyte/flamigo/core"
 	"github.com/amberbyte/flamigo/internal"
-
-	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
-var _ AppBus = (*Bus[Event])(nil)
+// Bus is a generic interface for event buses.
+type Bus[T Event] interface {
+	Subscribe(listener BusListener[T]) Subscription
+	Publish(message T, actor ...flamigo.Actor)
+	PublishSync(message T, actor ...flamigo.Actor)
+}
+
+// Default buffer size if none is provided.
+const defaultBufferSize = 200
+
+// BusOptions allows optional configuration of the bus.
+type BusOptions struct {
+	BufferSize int
+}
+
+// AppBus is the default Bus using the base Event type.
+type AppBus = Bus[Event]
+
+var _ Bus[Event] = (*bus[Event])(nil)
 
 type published[T Event] struct {
 	event  T
@@ -25,95 +41,18 @@ func (p published[T]) Done() {
 	}
 }
 
-type Subscription[T Event] struct {
-	id     string
-	topics map[string]bool
-
-	all            bool
-	onlyReceivales bool
-	channel        chan published[T]
-	ended          bool
-	topicsLock     sync.Mutex
-}
-
-func (s *Subscription[T]) Cancel() {
-	if s.ended {
-		return
-	}
-	close(s.channel)
-	s.ended = true
-}
-
-func (s *Subscription[T]) SubscribeTopic(topic string) {
-	if s.all {
-		return
-	}
-	if s.topics == nil {
-		s.topics = make(map[string]bool)
-	}
-	s.topicsLock.Lock()
-	defer s.topicsLock.Unlock()
-	s.topics[topic] = true
-}
-
-func (s *Subscription[T]) UnsubscribeTopic(topic string) {
-	if s.topics == nil {
-		return
-	}
-	s.topicsLock.Lock()
-	defer s.topicsLock.Unlock()
-	delete(s.topics, topic)
-}
-
-func (s *Subscription[T]) OnlyReceivables() {
-	s.onlyReceivales = true
-}
-
-// func (s *Subscription[T]) HasTopic(topic string) bool {
-// 	if s.all {
-// 		return true
-// 	}
-// 	if s.topics == nil {
-// 		return false
-// 	}
-// 	return s.topics[topic]
-// }
-
-func (s *Subscription[T]) matchesTopic(topic Topic) bool {
-	if s.all {
-		return true
-	}
-	for t := range s.topics {
-		if topic.DoesMatch(t) {
-			return true
-		}
-	}
-	return false
-}
-
-func (s *Subscription[T]) AllTopics() {
-	s.all = true
-}
-
-func newSubscription[T Event](channel chan published[T]) *Subscription[T] {
-	id, _ := gonanoid.New()
-	return &Subscription[T]{
-		id:      id,
-		channel: channel,
-	}
-}
-
-type Bus[T Event] struct {
-	listeners     map[string]*Subscription[T]
+type bus[T Event] struct {
+	listeners     map[string]*subscription[T]
 	listenersLock sync.RWMutex
+	bufferSize    int
 }
 
-func (bus *Bus[T]) getAllSubscribers(topic []string, receivable bool) []*Subscription[T] {
-	bus.listenersLock.RLock()
-	defer bus.listenersLock.RUnlock()
-	// Find subscribers from topic
-	subscribers := make([]*Subscription[T], 0)
-	for _, sub := range bus.listeners {
+func (b *bus[T]) getAllSubscribers(topic []string, receivable bool) []*subscription[T] {
+	b.listenersLock.RLock()
+	defer b.listenersLock.RUnlock()
+
+	var subscribers []*subscription[T]
+	for _, sub := range b.listeners {
 		if sub.onlyReceivales && !receivable {
 			continue
 		}
@@ -124,98 +63,100 @@ func (bus *Bus[T]) getAllSubscribers(topic []string, receivable bool) []*Subscri
 	return subscribers
 }
 
-func (bus *Bus[T]) removeListener(id string) {
-	// Request write lock for listeners
-	bus.listenersLock.Lock()
-	defer bus.listenersLock.Unlock()
-
-	// Remove listener
-	delete(bus.listeners, id)
+func (b *bus[T]) removeListener(id string) {
+	b.listenersLock.Lock()
+	defer b.listenersLock.Unlock()
+	delete(b.listeners, id)
 }
 
-func (bus *Bus[T]) addListener(subscription *Subscription[T]) {
-	// Request write lock for listeners
-	bus.listenersLock.Lock()
-	defer bus.listenersLock.Unlock()
-
-	// Add listener
-	bus.listeners[subscription.id] = subscription
+func (b *bus[T]) addListener(subscription *subscription[T]) {
+	b.listenersLock.Lock()
+	defer b.listenersLock.Unlock()
+	b.listeners[subscription.id] = subscription
 }
 
-func (bus *Bus[T]) Subscribe(listener BusListener[T]) *Subscription[T] {
-	// Create subscription
-	channel := make(chan published[T], 200)
+func (b *bus[T]) Subscribe(listener BusListener[T]) Subscription {
+	channel := make(chan published[T], b.bufferSize)
 	subscription := newSubscription[T](channel)
-	bus.addListener(subscription)
+	b.addListener(subscription)
 
-	// Start reading loop
 	go func() {
-		for {
-			message, ok := <-channel
-			if !ok {
-				break
-			}
-			// We go concurrent here to avoid blocking further processing of events if one listener take some time to process
+		defer b.removeListener(subscription.id)
+		for msg := range channel {
 			go func(msg published[T]) {
-				rctx, c := context.WithTimeout(context.Background(), 5*time.Second)
-				defer c()
-				appCtx := flamigo.NewContext(rctx, message.actor)
-				ctx := NewContext(appCtx)
+				ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
 
-				listener(ctx, message.event)
-				message.Done()
-			}(message)
+				appCtx := flamigo.NewContext(ctxWithTimeout, msg.actor)
+				listener(NewContext(appCtx), msg.event)
+				msg.Done()
+			}(msg)
 		}
-
-		// Once the reading loop ends, delete the subscription
-		bus.removeListener(subscription.id)
 	}()
+
 	return subscription
 }
 
-func (bus *Bus[T]) Publish(message T, actor ...flamigo.Actor) {
+func (b *bus[T]) Publish(message T, actor ...flamigo.Actor) {
 	normActor := internal.ParseOptionalParam[flamigo.Actor](actor, flamigo.NewServerActor("unknown"))
 	alreadyReceived := make(map[string]bool)
+
 	for _, topic := range message.Topics() {
 		isReceivable := IsClientEvent(message)
-		subscribers := bus.getAllSubscribers(topic, isReceivable)
-		if len(subscribers) == 0 {
-			continue
-		}
-		for _, subscription := range subscribers {
-			if alreadyReceived[subscription.id] {
+		subscribers := b.getAllSubscribers(topic, isReceivable)
+
+		for _, sub := range subscribers {
+			if alreadyReceived[sub.id] {
 				continue
 			}
-			alreadyReceived[subscription.id] = true
-			subscription.channel <- published[T]{event: message, actor: normActor}
+			alreadyReceived[sub.id] = true
+
+			select {
+			case sub.channel <- published[T]{event: message, actor: normActor}:
+				// Successfully published
+			default:
+				// Channel full; could log, drop, or handle differently
+			}
 		}
 	}
 }
 
-// PublishSync publishes a message to all subscribers and blocks until all subscribers have processed the message
-func (bus *Bus[T]) PublishSync(message T, actor ...flamigo.Actor) {
+func (b *bus[T]) PublishSync(message T, actor ...flamigo.Actor) {
 	normActor := internal.ParseOptionalParam[flamigo.Actor](actor, flamigo.NewServerActor("unknown"))
 	alreadyReceived := make(map[string]bool)
-	wg := sync.WaitGroup{}
+	var wg sync.WaitGroup
+
 	for _, topic := range message.Topics() {
 		isReceivable := IsClientEvent(message)
-		subscribers := bus.getAllSubscribers(topic, isReceivable)
-		if len(subscribers) == 0 {
-			continue
-		}
+		subscribers := b.getAllSubscribers(topic, isReceivable)
 
-		for _, subscription := range subscribers {
-			if alreadyReceived[subscription.id] {
+		for _, sub := range subscribers {
+			if alreadyReceived[sub.id] {
 				continue
 			}
+			alreadyReceived[sub.id] = true
+
 			wg.Add(1)
-			alreadyReceived[subscription.id] = true
-			subscription.channel <- published[T]{event: message, actor: normActor, syncWg: &wg}
+			select {
+			case sub.channel <- published[T]{event: message, actor: normActor, syncWg: &wg}:
+			default:
+				wg.Done() // If full, drop and still mark as done
+			}
 		}
 	}
+
 	wg.Wait()
 }
 
-func NewBus[T Event]() *Bus[T] {
-	return &Bus[T]{listeners: make(map[string]*Subscription[T], 0)}
+// NewBus creates a new Bus with optional configuration.
+func NewBus[T Event](opts ...BusOptions) Bus[T] {
+	bufferSize := defaultBufferSize
+	if len(opts) > 0 && opts[0].BufferSize > 0 {
+		bufferSize = opts[0].BufferSize
+	}
+
+	return &bus[T]{
+		listeners:  make(map[string]*subscription[T]),
+		bufferSize: bufferSize,
+	}
 }

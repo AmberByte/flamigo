@@ -1,19 +1,17 @@
-package flamigo_infra
+package strategies
 
 import (
 	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/amberbyte/flamigo/strategies"
 )
 
-type strategyRegistry[CTX strategies.Context] struct {
+type strategyRegistry[CTX Context] struct {
 	prefix     string
-	strategies map[string]strategies.Strategy[CTX]
+	strategies map[string]Strategy[CTX]
 }
 
-func (r *strategyRegistry[CTX]) Register(topic string, fn strategies.Strategy[CTX]) error {
+func (r *strategyRegistry[CTX]) Register(topic string, fn Strategy[CTX]) error {
 	if !strings.HasPrefix(topic, r.prefix+"::") {
 		return fmt.Errorf("adding strategy: %w", fmt.Errorf("strategy %s should be %s::%s", topic, r.prefix, topic))
 	}
@@ -21,7 +19,7 @@ func (r *strategyRegistry[CTX]) Register(topic string, fn strategies.Strategy[CT
 	return nil
 }
 
-func (r *strategyRegistry[CTX]) Use(ctx CTX) strategies.StrategyResult {
+func (r *strategyRegistry[CTX]) Use(ctx CTX) StrategyResult {
 	topic := ctx.Request().Action()
 	if !strings.HasPrefix(topic, r.prefix+"::") {
 		ctx.Response().SetError(fmt.Errorf("registry (%s): %w", r.prefix, fmt.Errorf("strategy %s should be %s::%s", topic, r.prefix, topic)))
@@ -36,9 +34,9 @@ func (r *strategyRegistry[CTX]) Use(ctx CTX) strategies.StrategyResult {
 	return ctx.Response()
 }
 
-func NewRegistry[CTX strategies.Context](namespace string) strategies.Registry[CTX] {
+func NewRegistry[CTX Context](namespace string) Registry[CTX] {
 	return &strategyRegistry[CTX]{
 		prefix:     namespace,
-		strategies: map[string]strategies.Strategy[CTX]{},
+		strategies: map[string]Strategy[CTX]{},
 	}
 }

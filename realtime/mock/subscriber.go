@@ -5,7 +5,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-var _ realtime.Subscription[realtime.Event] = (*MockSubscriber[realtime.Event])(nil)
+var _ realtime.Subscription = (*MockSubscriber[realtime.Event])(nil)
 
 type MockSubscriber[T realtime.Event] struct {
 	mock.Mock
@@ -35,6 +35,10 @@ func (m *MockSubscriberExpected[T]) SubscribeTopic(topic string) *mock.Call {
 	return m.m.On("SubscribeTopic", topic)
 }
 
+func (m *MockSubscriberExpected[T]) SubscribeAll() *mock.Call {
+	return m.m.On("SubscribeAll")
+}
+
 func (m *MockSubscriberExpected[T]) UnsubscribeTopic(topic string) *mock.Call {
 	return m.m.On("UnsubscribeTopic", topic)
 }
@@ -45,6 +49,10 @@ func (m *MockSubscriberExpected[T]) OnlyReceivables() *mock.Call {
 
 func (m *MockSubscriber[T]) Cancel() {
 	m.MethodCalled("Cancel")
+}
+
+func (m *MockSubscriber[T]) SubscribeAll() {
+	m.MethodCalled("SubscribeAll")
 }
 
 func (m *MockSubscriber[T]) SubscribeTopic(topic string) {

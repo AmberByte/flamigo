@@ -9,10 +9,10 @@ import (
 
 func Init(injector injection.DependencyManager) error {
 	// Initialize the strategie registry
-	registry := NewRegistry[strategies.Context]("app")
+	registry := strategies.NewRegistry[strategies.Context]("app")
 
 	// Initialize the event bus
-	events := NewBus[realtime.Event]()
+	events := realtime.NewBus[realtime.Event]()
 	if err := injector.AddInjectable(registry); err != nil {
 		return err
 	}

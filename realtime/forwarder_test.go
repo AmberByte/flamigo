@@ -1,10 +1,9 @@
-package flamigo_infra_test
+package realtime_test
 
 import (
 	"testing"
 	"time"
 
-	flamigo_infra "github.com/amberbyte/flamigo/infrastructure"
 	"github.com/amberbyte/flamigo/realtime"
 )
 
@@ -22,7 +21,7 @@ func newTestEvent(topics ...realtime.Topic) realtime.Event {
 
 func TestForwarder(t *testing.T) {
 	t.Run("It Forwards the events", func(t *testing.T) {
-		f := flamigo_infra.NewForwarder[realtime.Event]()
+		f := realtime.NewForwarder[realtime.Event]()
 		event := newTestEvent()
 		done := make(chan bool)
 		f.Subscribe(func(msg realtime.Event) {

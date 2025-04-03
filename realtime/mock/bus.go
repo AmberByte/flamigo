@@ -55,12 +55,12 @@ type MockAppBus = MockBus[realtime.Event]
 
 type MockBus[Evt realtime.Event] struct {
 	mock.Mock
-	listeners map[realtime.Subscription[Evt]]realtime.BusListener[realtime.Event]
+	listeners map[realtime.Subscription]realtime.BusListener[realtime.Event]
 }
 
-func (m *MockBus[Evt]) Subscribe(subscription realtime.BusListener[realtime.Event]) realtime.Subscription[Evt] {
+func (m *MockBus[Evt]) Subscribe(subscription realtime.BusListener[realtime.Event]) realtime.Subscription {
 	args := m.Called(subscription)
-	subscriber := args.Get(0).(realtime.Subscription[Evt])
+	subscriber := args.Get(0).(realtime.Subscription)
 	m.listeners[subscriber] = subscription
 	return subscriber
 }
@@ -75,7 +75,7 @@ func (m *MockBus[Evt]) PublishSync(event realtime.Event, actor ...flamigo.Actor)
 	m.Publish(event, actor...)
 }
 
-func (m *MockBus[Evt]) TRIGGER(subscription realtime.Subscription[Evt], ctx realtime.Context, event realtime.Event) error {
+func (m *MockBus[Evt]) TRIGGER(subscription realtime.Subscription, ctx realtime.Context, event realtime.Event) error {
 	if listener, ok := m.listeners[subscription]; ok {
 		listener(ctx, event)
 		return nil
@@ -89,6 +89,6 @@ func (m *MockBus[Evt]) EXPECT() *MockBus_Expecter {
 
 func NewBus() *MockBus[realtime.Event] {
 	return &MockBus[realtime.Event]{
-		listeners: make(map[realtime.Subscription[realtime.Event]]realtime.BusListener[realtime.Event]),
+		listeners: make(map[realtime.Subscription]realtime.BusListener[realtime.Event]),
 	}
 }

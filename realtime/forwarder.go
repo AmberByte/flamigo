@@ -1,21 +1,19 @@
-package flamigo_infra
+package realtime
 
 import (
 	"errors"
-
-	"github.com/amberbyte/flamigo/realtime"
 )
 
 var (
 	ErrAlreadySubscribed = errors.New("already subscribed")
 )
 
-type Forwarder[T realtime.Event] struct {
+type Forwarder[T Event] struct {
 	channel           chan T
 	alreadySubscribed bool
 }
 
-func (bus *Forwarder[T]) Subscribe(listener realtime.ForwarderListener[T]) (func(), error) {
+func (bus *Forwarder[T]) Subscribe(listener ForwarderListener[T]) (func(), error) {
 	if bus.alreadySubscribed {
 		return nil, ErrAlreadySubscribed
 	}
@@ -39,7 +37,7 @@ func (forwarder *Forwarder[T]) Publish(message T) {
 	forwarder.channel <- message
 }
 
-func NewForwarder[T realtime.Event]() *Forwarder[T] {
+func NewForwarder[T Event]() *Forwarder[T] {
 	return &Forwarder[T]{
 		channel: make(chan T, 5),
 	}
