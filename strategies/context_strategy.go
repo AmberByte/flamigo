@@ -1,8 +1,6 @@
 package strategies
 
 import (
-	"context"
-
 	flamigo "github.com/amberbyte/flamigo/core"
 )
 
@@ -14,7 +12,7 @@ type StrategyResult interface {
 }
 
 type Context interface {
-	context.Context
+	flamigo.Context
 	Request() *Request
 	Response() *Response
 }
