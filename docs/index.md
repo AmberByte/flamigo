@@ -7,7 +7,7 @@ hero:
   text: "Domain Driven Go"
   tagline: Scalable Backend Framework for building Domain Driven Go Backends
   image:
-    src: assets/logo.png
+    src: ./logo.png
     alt: Logo
   actions:
     - theme: brand

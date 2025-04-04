@@ -6,7 +6,7 @@ export default defineConfig({
   description: "Documentation of Flamigo Framework",
 
   themeConfig: {
-    logo: 'assets/logo-simple.svg',
+    logo: 'logo-simple.svg',
     // https://vitepress.dev/reference/default-theme-config
     nav: [
       { text: 'Home', link: '/' },

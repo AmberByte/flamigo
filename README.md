@@ -38,7 +38,7 @@ This sets up the basic structure and lets you focus on what matters: your domain
 ## Docs
 
 Documentation, examples, and design guides are available at  
-👉 [amberbyte.github.io/flamigo](https://amberbyte.github.io/flamigo)
+👉 [flamigo.amberbyte.dev](https://flamigo.amberbyte.dev)
 
 ## Contributing
 
