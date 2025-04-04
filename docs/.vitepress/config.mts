@@ -3,7 +3,7 @@ import { defineConfig, HeadConfig } from 'vitepress'
 const umamiScript: HeadConfig = ["script", {
   defer: "true",
   src: "https://analytics.amberbyte.dev/clackor",
-  "data-website-id": "ea1ae4b0-a634-4a45-ad86-7f630454efa1"
+  "data-website-id": "ec93a5fa-a1e4-48bd-8f1a-3640f2f3b879"
 }]
 
 const baseHeaders: HeadConfig[] = []
