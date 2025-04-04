@@ -7,18 +7,18 @@ import (
 
 type Request struct {
 	action  string
-	payload interface{}
+	payload any
 }
 
 func (c *Request) Action() string {
 	return c.action
 }
 
-func (c *Request) Payload() interface{} {
+func (c *Request) Payload() any {
 	return c.payload
 }
 
-func (c *Request) Bind(target interface{}) error {
+func (c *Request) Bind(target any) error {
 	switch v := c.payload.(type) {
 	case []byte:
 		return json.Unmarshal(v, target)
@@ -31,7 +31,7 @@ func (c *Request) Bind(target interface{}) error {
 	}
 }
 
-func NewRequest(action string, payload interface{}) *Request {
+func NewRequest(action string, payload any) *Request {
 	return &Request{
 		action:  action,
 		payload: payload,

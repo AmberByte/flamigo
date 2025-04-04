@@ -27,3 +27,7 @@ type UserActor interface {
 	flamigo.Actor
 	User() *User
 }
+
+func RequireUserActorWithClaims(ctx Context, opts ...flamigo.ActorClaimValidator) (UserActor, error) {
+	return flamigo.RequireActorWithClaims[UserActor](ctx, opts...)
+}

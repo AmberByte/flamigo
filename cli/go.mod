@@ -1,4 +1,4 @@
-module github.com/amberbyte/flamigo/cli
+module github.com/amberbyte/flamigo/flamigo-cli
 
 go 1.24.1
 
