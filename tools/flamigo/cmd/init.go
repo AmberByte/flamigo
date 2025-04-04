@@ -10,7 +10,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/amberbyte/flamigo/cli/internal/project"
+	"github.com/amberbyte/flamigo/tools/flamigo/internal/project"
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 )

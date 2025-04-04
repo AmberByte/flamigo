@@ -3,7 +3,7 @@
 To easily scaffold a new project, first install the flamigo cli
 
 ```bash
-go install github.com/amberbyte/flamigo/cli
+go install github.com/amberbyte/flamigo/tools/flamigo@latest
 ```
 
 # Scaffold new project
