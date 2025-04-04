@@ -1,0 +1,92 @@
+package websocket
+
+import (
+	"encoding/json"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestCommand(t *testing.T) {
+	cr := CommandRequest{
+		data: commandData{
+			Command: "testCommand",
+		},
+	}
+	assert.Equal(t, "testCommand", cr.Command(), "Command should match")
+}
+
+func TestPayload(t *testing.T) {
+	const payload = `{ "topic": "something1", "payload": { "field1":"value1" }}`
+	command, err := newCommand([]byte(payload))
+	assert.Nil(t, err, "newCommand should not return an error")
+
+	assert.Equal(t, `{ "field1":"value1" }`, string(command.Payload().(json.RawMessage)), "Payload should match")
+}
+
+func TestTopic(t *testing.T) {
+	const payload = `{ "topic": "something1", "payload": { "field1":"value1" }}`
+	command, err := newCommand([]byte(payload))
+	assert.Nil(t, err, "newCommand should not return an error")
+
+	assert.Equal(t, `something1`, command.Command(), "Command name should match")
+}
+
+func TestUnmarshalPayload(t *testing.T) {
+	payload := struct {
+		Field1 string `json:"field1"`
+	}{}
+	rawPayload, _ := json.Marshal(payload)
+
+	cr := CommandRequest{
+		data: commandData{
+			Payload: json.RawMessage(rawPayload),
+		},
+	}
+
+	var unmarshaledPayload struct {
+		Field1 string `json:"field1"`
+	}
+	err := cr.UnmarshalPayload(&unmarshaledPayload)
+
+	assert.Nil(t, err, "UnmarshalPayload should not return an error")
+	assert.Equal(t, payload.Field1, unmarshaledPayload.Field1, "Payload fields should match")
+}
+
+func TestAckKey(t *testing.T) {
+	cr := CommandRequest{
+		data: commandData{
+			AckKey: "ack123",
+		},
+	}
+	assert.Equal(t, "ack123", cr.AckKey(), "AckKey should match")
+}
+
+func TestValidate(t *testing.T) {
+	cr := CommandRequest{
+		data: commandData{
+			Command: "testCommand",
+			Payload: json.RawMessage(`{"field1":"value1"}`),
+		},
+	}
+	err := cr.Validate()
+	assert.Nil(t, err, "Validate should not return an error")
+}
+
+func TestNewCommand(t *testing.T) {
+	t.Run("With valid JSON", func(t *testing.T) {
+		rawMessage := []byte(`{"topic":"testCommand","payload":{"field1":"value1"}}`)
+		cr, err := newCommand(rawMessage)
+
+		assert.Nil(t, err, "newCommand should not return an error")
+		assert.NotNil(t, cr, "newCommand should return a CommandRequest")
+		assert.Equal(t, "testCommand", cr.Command(), "Command should match")
+	})
+	t.Run("With invalid JSON", func(t *testing.T) {
+		rawMessage := []byte(`{"topic":"testCommand","payload":{"field1":"value1"}`)
+		cr, err := newCommand(rawMessage)
+		assert.NotNil(t, err, "newCommand should return an error")
+		assert.Nil(t, cr, "newCommand should not return a CommandRequest")
+	})
+	// Additional assertions can be made for payload and ACK key if needed
+}

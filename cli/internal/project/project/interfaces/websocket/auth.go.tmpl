@@ -1,0 +1,46 @@
+package websocket
+
+import (
+	flamigo "github.com/amberbyte/flamigo/core"
+	"github.com/amberbyte/flamigo/realtime"
+	"github.com/amberbyte/flamigo/strategies"
+	auth "{{.ProjectModulePath}}/internal/domains/auth/domain"
+	authEvents "{{.ProjectModulePath}}/internal/domains/auth/domain/events"
+)
+
+type authPayload struct {
+	Token string `json:"token"`
+}
+
+func websocketAuthStrategy(authService auth.Service, strategyRegistry strategies.AppRegistry, pubsub realtime.AppBus) {
+	strategy := func(ctx strategies.Context) {
+		lgr := ctx.Logger()
+		actor, err := flamigo.RequireActorWithClaims[*Actor](ctx, IsWebsocket())
+		if err != nil {
+			lgr.Error("Strategy can only be called with websocket actor")
+			ctx.Response().SetError(ErrInvalidActor)
+			return
+		}
+
+		payload := authPayload{}
+		if err := ctx.UnmarshalAndValidatePayload(&payload); err != nil {
+			lgr.Warnf("Could not unmarshal payload 1: %v", err)
+			ctx.Response().SetError(err)
+			return
+		}
+		currentUser, err := authService.VerifyToken(ctx, payload.Token)
+		if err != nil {
+			lgr.Warnf("Could not find user: %v", err)
+			ctx.Response().SetError(err)
+			return
+		}
+		c := actor.client
+		c.registerUser(currentUser)
+		ctx.Response().SetPayload(struct {
+			Success bool `json:"success"`
+		}{true})
+		pubsub.Publish(authEvents.NewUserAuthenticated(*currentUser), newWebsocketActor(c))
+	}
+
+	strategyRegistry.Register("app::websocket:auth", strategy)
+}

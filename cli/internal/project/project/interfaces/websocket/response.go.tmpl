@@ -1,0 +1,169 @@
+package websocket
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/go-playground/validator/v10"
+
+	flamigo "github.com/amberbyte/flamigo/core"
+	"github.com/amberbyte/flamigo/realtime"
+)
+
+func marshallPayload(payload interface{}) ([]byte, error) {
+	switch v := payload.(type) {
+	case realtime.ClientMessageMarshaller:
+		return v.MarshalClientPayload()
+	case json.Marshaler:
+		// responseLgr.Warnf("Used a json.Marshaller for websocket payload. if you want to use a message, please be more verbose and use relatime.ClientMessageMarshaller instead: %v", payload)
+		return v.MarshalJSON()
+	default:
+		// responseLgr.Warnf("Used a JSON Marshall for websocket payload. if you want to use a message, please be more verbose and use relatime.ClientMessageMarshaller instead: %v", payload)
+		return json.Marshal(payload)
+	}
+}
+
+type Response interface {
+	json.Marshaler
+}
+
+type ResponseOpt = func(*responseBody)
+
+func WithAckKey(ackKey string) ResponseOpt {
+	return func(r *responseBody) {
+		r.AckKey = ackKey
+	}
+}
+
+func FromCommand(cmd Command) ResponseOpt {
+	return func(r *responseBody) {
+		r.AckKey = cmd.AckKey()
+	}
+}
+
+type responseBody struct {
+	Topic   string
+	AckKey  string
+	Payload interface{}
+}
+
+func (r *responseBody) MarshalJSON() ([]byte, error) {
+	rawPayload, err := marshallPayload(r.Payload)
+	if err != nil {
+		return nil, err
+	}
+	rawBody := struct {
+		Topic   string          `json:"topic"`
+		AckKey  string          `json:"ack,omitempty"`
+		Payload json.RawMessage `json:"payload"`
+	}{
+		Topic:   r.Topic,
+		AckKey:  r.AckKey,
+		Payload: rawPayload,
+	}
+	return json.Marshal(rawBody)
+}
+
+type SuccessResponse struct {
+	body *responseBody
+}
+
+func (sr *SuccessResponse) MarshalJSON() ([]byte, error) {
+	return json.Marshal(sr.body)
+}
+
+func NewSuccessResponse(topic string, payload interface{}, opts ...ResponseOpt) Response {
+	sr := &SuccessResponse{
+		body: &responseBody{
+			Topic:   topic,
+			Payload: payload,
+		},
+	}
+
+	for _, opt := range opts {
+		opt(sr.body)
+	}
+	return sr
+}
+
+type errorPayload struct {
+	Message     string                `json:"message,omitempty"`
+	Status      int                   `json:"status,omitempty"`
+	FieldErrors []FieldErrorFormatted `json:"fieldErrors,omitempty"`
+	Trace       any                   `json:"trace,omitempty"`
+}
+
+type ErrorResponse struct {
+	msg *responseBody
+}
+
+func (er *ErrorResponse) MarshalJSON() ([]byte, error) {
+	return json.Marshal(er.msg)
+}
+
+func NewErrorResponse(err error, opts ...ResponseOpt) Response {
+	publicErr := unwrapPublicError(err)
+	payload := errorPayload{
+		Message: publicErr.PublicError(),
+		Status:  publicErr.StatusCode(),
+		Trace:   err.Error(),
+	}
+	switch v := err.(type) {
+	case validator.ValidationErrors:
+		payload.FieldErrors = formatValidatonError(v)
+	case flamigo.PublicError:
+		payload.Message = v.PublicError()
+	}
+	er := &ErrorResponse{
+		msg: &responseBody{
+			Topic:   "error",
+			Payload: payload,
+		},
+	}
+
+	for _, opt := range opts {
+		opt(er.msg)
+	}
+	er.msg.Topic = "error"
+	return er
+}
+
+type FieldErrorFormatted struct {
+	Field string `json:"field"`
+	Error string `json:"error"`
+}
+
+func unwrapPublicError(err error) flamigo.PublicError {
+	unwrappedErr := errors.Unwrap(err)
+	if err, ok := unwrappedErr.(flamigo.PublicError); ok {
+		return err
+	}
+	if unwrappedErr == nil {
+		return flamigo.WrapError("backend error: %w", err)
+	}
+	return unwrapPublicError(unwrappedErr)
+}
+
+func formatValidatonError(err validator.ValidationErrors) []FieldErrorFormatted {
+	errors := make([]FieldErrorFormatted, 0, len(err))
+	for _, e := range err {
+		errors = append(errors, FieldErrorFormatted{
+			Field: e.Field(),
+			Error: formatFieldError(e),
+		})
+	}
+	return errors
+}
+
+func formatFieldError(fe validator.FieldError) string {
+	switch fe.Tag() {
+	case "required":
+		return fmt.Sprintf("%s is required", fe.Field())
+	case "oneof":
+		return fmt.Sprintf("%s must be one of %s", fe.Field(), strings.ReplaceAll(fe.Param(), " ", ","))
+	default:
+		return fmt.Sprintf("%s failed for %s", fe.Field(), fe.Tag())
+	}
+}

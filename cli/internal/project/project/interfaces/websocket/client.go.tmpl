@@ -1,0 +1,250 @@
+package websocket
+
+import (
+	"bytes"
+	"context"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/gorilla/websocket"
+	flamigo "github.com/amberbyte/flamigo/core"
+	"github.com/amberbyte/flamigo/realtime"
+	"github.com/amberbyte/flamigo/strategies"
+	{{if.HasFeature "auth"}}auth "{{.ProjectModulePath}}/internal/domains/auth/domain"{{end}}
+	"github.com/sirupsen/logrus"
+)
+
+const (
+	// Time allowed to write a message to the peer.
+	WRITE_MAX_WAIT = 10 * time.Second
+
+	// Time allowed to read the next pong message from the peer.
+	PONG_MAX_WAIT = 60 * time.Second
+
+	// Send pings to peer with this period. Must be less than pongWait.
+	PING_PERIOD = (PONG_MAX_WAIT * 9) / 10
+
+	// Maximum message size allowed from peer.
+	MAX_MESSAGE_SIZE = 2048
+)
+
+var (
+	ErrNotAuthorized  = logger.NewError("unauthorized", logger.StatusCode(401))
+	errInvalidScope   = logger.NewError("the commands scope is invalid", logger.StatusCode(403))
+	errUnknownSession = logger.NewError("the session is unknown", logger.StatusCode(500))
+	errNotReady       = logger.NewError("the session is not ready yet", logger.StatusCode(500))
+)
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		// TODO: this should not allow everything in a production case
+		return true
+	},
+}
+
+var (
+	newline = []byte{'\n'}
+	space   = []byte{' '}
+)
+
+type Client struct {
+	conn             *websocket.Conn
+	sendData         chan []byte
+	Authenticated    bool
+	{{if.HasFeature "auth"}}User             *auth.User{{end}}
+	subscription     realtime.Subscription[realtime.Event]
+	strategyRegistry strategies.AppRegistry
+	pubsub           realtime.AppBus
+}
+
+func (c *Client) registerUser(u *auth.User) {
+	c.User = u
+	c.Authenticated = true
+	c.lgr = c.lgr.WithFields(logger.ComposeFields(logger.User(u.ID)))
+	c.enableReceivingEvents()
+}
+
+func (c *Client) unregister() {
+	if c.subscription != nil {
+		c.subscription.Cancel()
+	}
+	if c.User != nil {
+		evt := NewEventDisconnected(*c.User)
+		c.pubsub.Publish(evt)
+	}
+}
+
+// func (c *Client) SendRaw(data []byte) {
+// 	c.send <- data
+// }
+
+func (c *Client) SendMessage(topic string, message realtime.ClientMessageMarshaller) {
+
+	c.sendResponse(NewSuccessResponse(topic, message))
+}
+
+func (c *Client) sendResponse(response Response) {
+	rawMessage, err := response.MarshalJSON()
+	if err != nil {
+		logrus.Errorf("Could not marshal response: %v", err)
+		return
+	}
+	// c.SendRaw(rawMessage)
+	c.sendData <- rawMessage
+}
+
+// readPump pumps messages from the websocket connection to the hub.
+//
+// The application runs readPump in a per-connection goroutine. The application
+// ensures that there is at most one reader on a connection by executing all
+// reads from this goroutine.
+func (c *Client) readPump() {
+	defer func() {
+		// c.hub.unregister <- c
+		c.conn.Close()
+	}()
+	c.conn.SetReadLimit(MAX_MESSAGE_SIZE)
+	c.conn.SetReadDeadline(time.Now().Add(PONG_MAX_WAIT))
+	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(PONG_MAX_WAIT)); return nil })
+	for {
+		_, message, err := c.conn.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				logrus.Printf("error: %v", err)
+			}
+			logrus.Println("Connection closed with err", err)
+			break
+		}
+		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
+		// logrus.Println("Received message: ", string(message))
+		command, err := newCommand(message)
+		if err != nil {
+			logrus.Printf("Could not read command error: %v", err)
+			continue
+		}
+		err = command.Validate()
+		if err != nil {
+			logrus.Printf("Could not validate message: %v", err)
+			c.sendResponse(NewErrorResponse(err, FromCommand(command)))
+			continue
+		}
+		if !c.Authenticated && command.Command() != "app::websocket:auth" {
+			logrus.Printf("Client not authenticated, ignoring message")
+			c.sendResponse(NewErrorResponse(ErrNotAuthorized, FromCommand(command)))
+			continue
+		}
+
+		appCtx := flamigo.NewCoreContext(context.TODO(), newWebsocketActor(c))
+		strategyCtx := strategies.NewContext(appCtx, command.Command(), command.Payload())
+		logrus.Debugf("[CONN] Using strategy %s\n", command.Command())
+		var result strategies.StrategyResult
+		if strings.HasPrefix(command.Command(), "app::") {
+			result = c.strategyRegistry.Use(strategyCtx)
+		} else {
+			logrus.Infof("Strategy Rejected: invalid scope")
+			c.sendResponse(NewErrorResponse(errInvalidScope, FromCommand(command)))
+			continue
+		}
+		if result.IsError() {
+			logrus.Infof("Strategy Rejected with error: %s", result.Err())
+			c.sendResponse(NewErrorResponse(result.Err(), FromCommand(command)))
+			continue
+		}
+		if result.IsOk() {
+			c.sendResponse(NewSuccessResponse(command.Command(), result.Response(), FromCommand(command)))
+			continue
+		}
+	}
+
+	c.unregister()
+}
+
+// writePump pumps messages from the hub to the websocket connection.
+//
+// A goroutine running writePump is started for each connection. The
+// application ensures that there is at most one writer to a connection by
+// executing all writes from this goroutine.
+func (c *Client) writePump() {
+	ticker := time.NewTicker(PING_PERIOD)
+	defer func() {
+		ticker.Stop()
+		c.conn.Close()
+	}()
+	for {
+		select {
+		case message, ok := <-c.sendData:
+			c.conn.SetWriteDeadline(time.Now().Add(WRITE_MAX_WAIT))
+			if !ok {
+				// The hub closed the channel.
+				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+
+			w, err := c.conn.NextWriter(websocket.TextMessage)
+			if err != nil {
+				return
+			}
+			w.Write(message)
+
+			// // Add queued chat messages to the current websocket message.
+			// n := len(c.send)
+			// for i := 0; i < n; i++ {
+			// 	w.Write(newline)
+			// 	w.Write(<-c.send)
+			// }
+
+			if err := w.Close(); err != nil {
+				return
+			}
+		case <-ticker.C:
+			c.conn.SetWriteDeadline(time.Now().Add(WRITE_MAX_WAIT))
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
+		}
+	}
+}
+
+func (c *Client) enableReceivingEvents() {
+	subscription := c.pubsub.Subscribe(c.handleReceivables)
+	// it forwards only events that implement ClientMessages interface
+	subscription.OnlyReceivables()
+	// subscribe to topics that should be forewarded here
+	c.subscription = subscription
+}
+
+func (c *Client) handleReceivables(ctx realtime.Context, evt realtime.Event) {
+	// lgr := c.lgr.WithField("method", "handleServerEvent")
+	// lgr.Infof("Client received event (%s): %T", evt.Topics(), evt)
+	receivableEvent, ok := evt.(realtime.ClientEvent)
+	if !ok {
+		// lgr.Info("Not a receivable event")
+		return
+	}
+	// lgr.Debugf("Client received event (%s): %T", evt.Topics(), evt)
+	msg := receivableEvent.ClientMessage()
+	sendMsg := NewSuccessResponse(msg.Topic(), msg.Payload())
+	c.sendResponse(sendMsg)
+}
+
+// serveWs handles websocket requests from the peer.
+func serveWs(w http.ResponseWriter, r *http.Request, pubsub realtime.AppBus, registry strategies.AppRegistry) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
+	client := &Client{
+		conn:             conn,
+		sendData:         make(chan []byte, 256),
+		pubsub:           pubsub,
+		strategyRegistry: registry,
+	}
+
+	// Allow collection of memory referenced by the caller by doing all work in
+	// new goroutines.
+	go client.writePump()
+	go client.readPump()
+}

@@ -1,0 +1,29 @@
+package auth
+
+import (
+	flamigo "github.com/amberbyte/flamigo/core"
+)
+
+type User struct {
+	ID          string   `json:"id"`
+	Username    string   `json:"username"`
+	Permissions []string `json:"-"`
+}
+
+func (u *User) IsAdmin() bool {
+	return u.HasPermission("admin")
+}
+
+func (u *User) HasPermission(permission string) bool {
+	for _, p := range u.Permissions {
+		if p == permission {
+			return true
+		}
+	}
+	return false
+}
+
+type UserActor interface {
+	flamigo.Actor
+	User() *User
+}

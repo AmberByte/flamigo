@@ -1,0 +1,25 @@
+package websocket
+
+import (
+	"github.com/amberbyte/flamigo/realtime"
+	auth "{{.ProjectModulePath}}/internal/domains/auth/domain"
+)
+
+// EventDisconnected is an event that is triggered when a user disconnects from the websocket and this websocket is connected to a user
+type EventDisconnected struct {
+	user auth.User
+}
+
+func NewEventDisconnected(user auth.User) *EventDisconnected {
+	return &EventDisconnected{
+		user: user,
+	}
+}
+
+func (e *EventDisconnected) User() auth.User {
+	return e.user
+}
+
+func (e *EventDisconnected) Topics() []realtime.Topic {
+	return []realtime.Topic{TopicUserDisconnected(e.user.ID)}
+}

@@ -1,0 +1,11 @@
+package auth_infra
+
+import (
+	"github.com/amberbyte/flamigo/injection"
+)
+
+func Init(inject injection.DependencyManager) error {
+	authService := newAuthService()
+	inject.AddInjectable(authService)
+	return nil
+}

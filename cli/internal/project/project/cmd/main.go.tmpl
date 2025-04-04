@@ -1,0 +1,73 @@
+package main
+
+import (
+	"fmt"
+	"reflect"
+	"runtime"
+	"strings"
+
+	core_infra "{{.ProjectModulePath}}/internal/domains/core/infrastructure"
+	"{{.ProjectModulePath}}/internal/api"
+	{{if .HasFeature "config"}}"github.com/amberbyte/flamigo/config"{{end}}
+	{{if .HasFeature "auth"}}auth_infra "{{.ProjectModulePath}}/internal/domains/auth/infrastructure"{{end}}
+	{{if .HasFeature "realtime"}}websocket "{{.ProjectModulePath}}/internal/infrastructure/websocket"{{end}}
+)
+
+var initializers = []any{
+	//------------  Core domains and packages
+	{{if .HasFeature "config"}}config.Init,{{end}}
+	core_infra.Init,
+	//------------ Domains Infra
+	{{if .HasFeature "auth"}}auth_infra.Init,{{end}}
+	// ----------- Domain Apps
+	
+	//------------ Initialize APIs
+	api.Init,
+	{{if .HasFeature "realtime"}}websocket.Init,{{end}}
+}
+
+func wrapError(t reflect.Type, err error) error {
+	return fmt.Errorf("initializer %s: %w", t.PkgPath(), err)
+
+}
+
+func validInitializer(init any) error {
+	t := reflect.TypeOf(init)
+	if t.Kind() != reflect.Func {
+		return wrapError(t, fmt.Errorf("initializer must be a function, got %s", t.Kind()))
+	}
+	if t.NumOut() < 1 {
+		return wrapError(t, fmt.Errorf("initializer must return at least one value"))
+	}
+
+	return nil
+}
+
+func getFunctionPackageName(f interface{}) string {
+	ptr := reflect.ValueOf(f).Pointer()
+	fn := runtime.FuncForPC(ptr)
+	if fn == nil {
+		return "unknown"
+	}
+
+	fullName := fn.Name()
+	return strings.Replace(fullName, "{{.ProjectModulePath}}", "", 1)
+}
+
+func main() {
+	logrus.SetLevel(logrus.DebugLevel)
+	lgr.Info("Starting {{.ProjectName}} backend")
+	injector := injection.NewInjecter()
+
+	for _, init := range initializers {
+		err := validInitializer(init)
+		if err != nil {
+			lgr.Fatalf("verifying initializer (#%s): %s", getFunctionPackageName(init), err)
+		}
+		err = injector.Execute(init)
+		if err != nil {
+
+			lgr.Fatalf("initializing (%s): %s", getFunctionPackageName(init), err)
+		}
+	}
+}

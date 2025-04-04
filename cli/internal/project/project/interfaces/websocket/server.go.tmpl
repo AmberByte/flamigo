@@ -1,0 +1,40 @@
+package websocket
+
+import (
+	"net/http"
+	"fmt"
+
+	"github.com/gorilla/mux"
+	{{if.HasFeature "auth"}}auth "github.com/hackero-game/hackero/backend-game/internal/domains/auth/domain"{{end}}
+	"github.com/amberbyte/flamigo/realtime"
+	"github.com/amberbyte/flamigo/strategies"
+	"github.com/sirupsen/logrus"
+)
+
+
+func Init(auth auth.Service, pubsub realtime.AppBus, apiRegistry strategies.AppRegistry) error {
+
+
+	{{if.HasFeature "auth"}}websocketAuthStrategy(auth, apiRegistry, pubsub){{end}}
+
+	addr := ":8080"
+	fmt.Printf("Starting websocket server at %s", addr)
+	// go hub.run()
+	r := mux.NewRouter()
+	// r.Methods("OPTIONS").HandlerFunc(
+	// 	func(w http.ResponseWriter, r *http.Request) {
+	// 		myHttpLib.OptionsForBrowserPreflight(w, r)
+	// 	})
+	r.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Received /ws request")
+		serveWs(w, r, pubsub, apiRegistry)
+	})
+	err := http.ListenAndServe(addr, r)
+	if err != nil {
+		fmt.Println("ListenAndServe: ", err)
+		panic(err)
+	} else {
+		fmt.Println("Websocket server started successfully")
+	}
+	return nil
+}

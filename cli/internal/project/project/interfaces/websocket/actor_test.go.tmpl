@@ -1,0 +1,14 @@
+package websocket
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestActor(t *testing.T) {
+	t.Run("With Acknowlegde ID", func(t *testing.T) {
+		actor := newWebsocketActor(nil, WithAckId("123"))
+		assert.Equal(t, actor.ackId, "123")
+	})
+}

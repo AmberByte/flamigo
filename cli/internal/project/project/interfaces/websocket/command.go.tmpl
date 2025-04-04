@@ -1,0 +1,61 @@
+package websocket
+
+import (
+	"encoding/json"
+	"github.com/go-playground/validator/v10"
+)
+
+type commandData struct {
+	Command string          `json:"topic" validate:"required"`
+	Payload json.RawMessage `json:"payload" validate:"required"`
+	AckKey  string          `json:"ack,omitempty"`
+}
+
+type Command interface {
+	Command() string
+	Payload() interface{}
+	AckKey() string
+}
+
+type CommandRequest struct {
+	data commandData
+}
+
+func (cr *CommandRequest) Command() string {
+	return cr.data.Command
+}
+
+func (cr *CommandRequest) UnmarshalPayload(value interface{}) error {
+	return json.Unmarshal(cr.data.Payload, value)
+}
+
+func (cr *CommandRequest) Payload() interface{} {
+	return cr.data.Payload
+}
+
+func (cr *CommandRequest) AckKey() string {
+	return cr.data.AckKey
+}
+
+func (cr *CommandRequest) Validate() error {
+	v := validator.New()
+	v.RegisterTagNameFunc(func(fld reflect.StructField) string {
+		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+		if name == "-" {
+			return ""
+		}
+		return name
+	})
+	err := v.Struct(obj)
+	return err
+}
+
+func newCommand(rawMessage []byte) (*CommandRequest, error) {
+	var data commandData
+	if err := json.Unmarshal(rawMessage, &data); err != nil {
+		return nil, err
+	}
+	return &CommandRequest{
+		data: data,
+	}, nil
+}

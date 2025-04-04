@@ -1,0 +1,11 @@
+package api
+
+import (
+	"github.com/amberbyte/flamigo/injection"
+)
+
+var apiModules = []any{}
+
+func Init(inj injection.DependencyManager) error {
+	return inj.ExecuteList(apiModules)
+}

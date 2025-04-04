@@ -1,0 +1,46 @@
+package auth_infra
+
+import (
+	"context"
+
+	flamigo "github.com/amberbyte/flamigo/core"
+	auth "{{.ProjectModulePath}}/internal/domains/auth/domain"
+)
+
+var (
+	errInvalidToken         = flamigo.NewError("provided token is invalid", flamigo.Public("Login error"))
+	errClientInitialization = flamigo.NewError("could not initialize auth client", flamigo.Public("Login error"))
+	errParsing              = flamigo.NewError("could not parse user entity", flamigo.Public("Login error"))
+)
+
+var _ auth.Service = (*Auth)(nil)
+
+type Auth struct {
+}
+
+func (a *Auth) VerifyToken(ctx context.Context, token string) (*auth.User, error) {
+	panic("NOT YET IMPLEMENTED")
+}
+
+func (a *Auth) GetAuthUser(ctx context.Context, uid string) (*auth.User, error) {
+
+	usr := &auth.User{
+		ID:          uid,
+		Username:    "example",
+		Permissions: []string{},
+	}
+	return usr, nil
+}
+
+func newAuth() *Auth {
+	return &Auth{}
+}
+
+var instance *Auth
+
+func newAuthService() *Auth {
+	if instance == nil {
+		instance = newAuth()
+	}
+	return instance
+}

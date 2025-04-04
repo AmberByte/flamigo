@@ -1,0 +1,11 @@
+package auth_events
+
+import "github.com/amberbyte/flamigo/realtime"
+
+func UserAuthenticatedTopic(userID string) realtime.Topic {
+	return realtime.NewTopic("auth", "authenticated", userID)
+}
+
+func UserTopic(userID string) realtime.Topic {
+	return realtime.NewTopic("user", userID)
+}

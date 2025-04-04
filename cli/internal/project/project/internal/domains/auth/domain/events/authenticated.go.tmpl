@@ -1,0 +1,28 @@
+package auth_events
+
+import (
+	"github.com/amberbyte/flamigo/realtime"
+	auth "{{.ProjectModulePath}}/internal/domains/auth/domain"
+)
+
+var _ realtime.Event = (*UserAuthenticated)(nil)
+
+type UserAuthenticated struct {
+	user auth.User
+}
+
+func (e *UserAuthenticated) Topics() []realtime.Topic {
+	return []realtime.Topic{
+		UserAuthenticatedTopic(e.user.ID),
+	}
+}
+
+func (e *UserAuthenticated) User() auth.User {
+	return e.user
+}
+
+func NewUserAuthenticated(user auth.User) *UserAuthenticated {
+	return &UserAuthenticated{
+		user: user,
+	}
+}

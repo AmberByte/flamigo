@@ -1,0 +1,67 @@
+package websocket
+
+import (
+	"encoding/json"
+	"errors"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// TestWithAckKey verifies that WithAckKey sets the AckKey correctly.
+func TestWithAckKey(t *testing.T) {
+	rw := &responseBody{}
+	opt := WithAckKey("ack123")
+	opt(rw)
+
+	assert.Equal(t, "ack123", rw.AckKey, "AckKey should be set correctly by WithAckKey")
+}
+
+// TestFromCommand verifies that FromCommand sets the AckKey from a Command object.
+func TestFromCommand(t *testing.T) {
+	cmd, err := newCommand([]byte(`{"topic":"testTopic","payload":{},"ack":"ack456"}`))
+	assert.Nil(t, err, "newCommand should not return an error")
+	rw := &responseBody{}
+	opt := FromCommand(cmd)
+	opt(rw)
+
+	assert.Equal(t, "ack456", rw.AckKey, "AckKey should be set correctly by FromCommand")
+}
+
+// TestNewSuccessResponse verifies the creation of a SuccessResponse with options.
+func TestNewSuccessResponse(t *testing.T) {
+	sr := NewSuccessResponse("testTopic", "testPayload", WithAckKey("ack789")).(*SuccessResponse)
+
+	expectedMsg := &responseBody{
+		Topic:   "testTopic",
+		Payload: "testPayload",
+		AckKey:  "ack789",
+	}
+
+	b, _ := json.Marshal(expectedMsg)
+	expectedJSON := string(b)
+
+	b, _ = sr.MarshalJSON()
+	assert.JSONEq(t, expectedJSON, string(b), "SuccessResponse should marshal to the expected JSON")
+}
+
+// TestNewErrorResponse verifies the creation of an ErrorResponse with options.
+func TestNewErrorResponse(t *testing.T) {
+	err := errors.New("test error")
+	er := NewErrorResponse(err, WithAckKey("ackError")).(*ErrorResponse)
+
+	expectedMsg := &responseBody{
+		Topic: "error",
+		Payload: map[string]any{
+			"message": "backend error: " + err.Error(),
+			"trace":   err.Error(),
+		},
+		AckKey: "ackError",
+	}
+
+	b, _ := json.Marshal(expectedMsg)
+	expectedJSON := string(b)
+
+	b, _ = er.MarshalJSON()
+	assert.JSONEq(t, expectedJSON, string(b), "ErrorResponse should marshal to the expected JSON")
+}

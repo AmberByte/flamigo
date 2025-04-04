@@ -1,0 +1,7 @@
+package websocket
+
+import "github.com/amberbyte/flamigo/realtime"
+
+func TopicUserDisconnected(userID string) realtime.Topic {
+	return realtime.NewTopic("user", "disconnected", userID)
+}
