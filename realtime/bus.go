@@ -53,7 +53,7 @@ func (b *bus[T]) getAllSubscribers(topic []string, receivable bool) []*subscript
 
 	var subscribers []*subscription[T]
 	for _, sub := range b.listeners {
-		if sub.onlyReceivales && !receivable {
+		if sub.onlyClientMessages && !receivable {
 			continue
 		}
 		if sub.matchesTopic(topic) {

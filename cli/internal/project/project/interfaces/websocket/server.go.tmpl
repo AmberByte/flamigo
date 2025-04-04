@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/gorilla/mux"
-	{{if.HasFeature "auth"}}auth "github.com/hackero-game/hackero/backend-game/internal/domains/auth/domain"{{end}}
+	{{if.HasFeature "auth"}}auth "{{.ProjectModulePath}}/internal/domains/auth/domain"{{end}}
 	"github.com/amberbyte/flamigo/realtime"
 	"github.com/amberbyte/flamigo/strategies"
 	"github.com/sirupsen/logrus"

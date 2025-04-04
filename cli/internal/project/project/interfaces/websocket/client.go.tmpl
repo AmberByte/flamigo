@@ -77,12 +77,7 @@ func (c *Client) unregister() {
 	}
 }
 
-// func (c *Client) SendRaw(data []byte) {
-// 	c.send <- data
-// }
-
 func (c *Client) SendMessage(topic string, message realtime.ClientMessageMarshaller) {
-
 	c.sendResponse(NewSuccessResponse(topic, message))
 }
 
@@ -92,7 +87,6 @@ func (c *Client) sendResponse(response Response) {
 		logrus.Errorf("Could not marshal response: %v", err)
 		return
 	}
-	// c.SendRaw(rawMessage)
 	c.sendData <- rawMessage
 }
 
@@ -211,7 +205,7 @@ func (c *Client) writePump() {
 func (c *Client) enableReceivingEvents() {
 	subscription := c.pubsub.Subscribe(c.handleReceivables)
 	// it forwards only events that implement ClientMessages interface
-	subscription.OnlyReceivables()
+	subscription.OnlyClientMessages()
 	// subscribe to topics that should be forewarded here
 	c.subscription = subscription
 }

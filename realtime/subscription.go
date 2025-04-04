@@ -10,7 +10,7 @@ type Subscription interface {
 	Cancel()
 	SubscribeTopic(topic string)
 	UnsubscribeTopic(topic string)
-	OnlyReceivables()
+	OnlyClientMessages()
 	SubscribeAll()
 }
 
@@ -20,11 +20,11 @@ type subscription[T Event] struct {
 	id     string
 	topics map[string]bool
 
-	all            bool
-	onlyReceivales bool
-	channel        chan published[T]
-	ended          bool
-	topicsLock     sync.Mutex
+	all                bool
+	onlyClientMessages bool
+	channel            chan published[T]
+	ended              bool
+	topicsLock         sync.Mutex
 }
 
 func (s *subscription[T]) Cancel() {
@@ -56,8 +56,8 @@ func (s *subscription[T]) UnsubscribeTopic(topic string) {
 	delete(s.topics, topic)
 }
 
-func (s *subscription[T]) OnlyReceivables() {
-	s.onlyReceivales = true
+func (s *subscription[T]) OnlyClientMessages() {
+	s.onlyClientMessages = true
 }
 
 func (s *subscription[T]) matchesTopic(topic Topic) bool {
