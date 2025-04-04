@@ -19,8 +19,11 @@ type Context interface {
 	Response() *Response
 }
 
+var _ Context = (*strategyContext)(nil)
+var _ flamigo.Context = (*strategyContext)(nil)
+
 type strategyContext struct {
-	context.Context
+	flamigo.Context
 	request  *Request
 	response *Response
 }

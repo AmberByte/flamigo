@@ -33,7 +33,7 @@ Then start a new project:
 flamigo init
 ```
 
-This sets up the basic structure and lets you focus on what matters: your domain.
+This start a wizard and sets up the basic structure
 
 ## Docs
 

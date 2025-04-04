@@ -3,6 +3,8 @@ package strategies
 import (
 	"encoding/json"
 	"errors"
+
+	"github.com/amberbyte/flamigo/internal"
 )
 
 type Request struct {
@@ -29,6 +31,18 @@ func (c *Request) Bind(target any) error {
 	default:
 		return errors.New("payload cannot be parsed as json")
 	}
+}
+
+// BindAndValidate binds the payload to the target and validates it using validator/v10.
+func (c *Request) BindAndValidate(target any) error {
+	if err := c.Bind(target); err != nil {
+		return err
+	}
+
+	if err := internal.Validate(target); err != nil {
+		return err
+	}
+	return nil
 }
 
 func NewRequest(action string, payload any) *Request {

@@ -16,10 +16,16 @@ type Publisher interface {
 
 type Topic []string
 
+// String returns the string representation of the topic
+//
+// e.g. "foo/bar/baz"
 func (t Topic) String() string {
 	return strings.Join(t, "/")
 }
 
+// DoesMatch checks if the topic matches the given pattern
+//
+// The pattern can contain wildcards (*) to match any part of the topic.
 func (t Topic) DoesMatch(topicPattern string) bool {
 	splitedTopicPattern := strings.Split(topicPattern, "/")
 	if len(t) < len(splitedTopicPattern) {
@@ -33,10 +39,14 @@ func (t Topic) DoesMatch(topicPattern string) bool {
 	return true
 }
 
+// TopicParseFromString parses a raw topic string into a Topic
+//
+// e.g. "foo/bar/baz" -> Topic{"foo", "bar", "baz"}.
 func TopicParseFromString(rawTopicString string) Topic {
 	return Topic(strings.Split(rawTopicString, "/"))
 }
 
+// NewTopic creates a new Topic from the given parts.
 func NewTopic(parts ...string) Topic {
 	return Topic(parts)
 }

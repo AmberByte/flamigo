@@ -11,8 +11,11 @@ import (
 
 // Bus is a generic interface for event buses.
 type Bus[T Event] interface {
+	// Subscribe adds a listener to the bus.
 	Subscribe(listener BusListener[T]) Subscription
+	// Publish publishes the event to all subscribing subscribers without waiting for them to finish.
 	Publish(message T, actor ...flamigo.Actor)
+	// PublishSync publishes the event to all subscribing subscribers and waits for them to finish.
 	PublishSync(message T, actor ...flamigo.Actor)
 }
 
@@ -122,7 +125,7 @@ func (b *bus[T]) Publish(message T, actor ...flamigo.Actor) {
 }
 
 func (b *bus[T]) PublishSync(message T, actor ...flamigo.Actor) {
-	normActor := internal.ParseOptionalParam[flamigo.Actor](actor, flamigo.NewServerActor("unknown"))
+	normActor := internal.ParseOptionalParam(actor, flamigo.NewServerActor("unknown"))
 	alreadyReceived := make(map[string]bool)
 	var wg sync.WaitGroup
 

@@ -27,6 +27,7 @@ type subscription[T Event] struct {
 	topicsLock         sync.Mutex
 }
 
+// Cancel ends the subscription. This will close the channel and prevent any further messages from being sent to it.
 func (s *subscription[T]) Cancel() {
 	if s.ended {
 		return
@@ -35,6 +36,7 @@ func (s *subscription[T]) Cancel() {
 	s.ended = true
 }
 
+// SubscribeTopic adds a topic to the subscription. If the subscription is already set to all topics, this will have no effect.
 func (s *subscription[T]) SubscribeTopic(topic string) {
 	if s.all {
 		return
@@ -47,6 +49,7 @@ func (s *subscription[T]) SubscribeTopic(topic string) {
 	s.topics[topic] = true
 }
 
+// UnsubscribeTopic removes a topic from the subscription. If the subscription is already set to all topics, this will have no effect.
 func (s *subscription[T]) UnsubscribeTopic(topic string) {
 	if s.topics == nil {
 		return
@@ -56,6 +59,7 @@ func (s *subscription[T]) UnsubscribeTopic(topic string) {
 	delete(s.topics, topic)
 }
 
+// OnlyClientMessages sets the subscription to only receive messages which implement ClientMessage. This is useful when implementing a client interface
 func (s *subscription[T]) OnlyClientMessages() {
 	s.onlyClientMessages = true
 }
@@ -72,6 +76,7 @@ func (s *subscription[T]) matchesTopic(topic Topic) bool {
 	return false
 }
 
+// SubscribeAll sets the subscription to receive all messages. This will override any topics set before.
 func (s *subscription[T]) SubscribeAll() {
 	s.all = true
 }
