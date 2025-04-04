@@ -1,10 +1,22 @@
-import { defineConfig } from 'vitepress'
+import { defineConfig, HeadConfig } from 'vitepress'
+
+const umamiScript: HeadConfig = ["script", {
+  defer: "true",
+  src: "https://analytics.amberbyte.dev/clackor",
+  "data-website-id": "ea1ae4b0-a634-4a45-ad86-7f630454efa1"
+}]
+
+const baseHeaders: HeadConfig[] = []
+
+const headers = process.env.NODE_ENV === "production" ?
+  [...baseHeaders, umamiScript] :
+  baseHeaders
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   title: "Flamigo Docs",
   description: "Documentation of Flamigo Framework",
-
+  head: headers,
   themeConfig: {
     logo: 'logo-simple.svg',
     // https://vitepress.dev/reference/default-theme-config
