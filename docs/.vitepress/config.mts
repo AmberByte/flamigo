@@ -42,6 +42,7 @@ export default defineConfig({
           { text: 'Dependency Injection', link: '/dependency-injection' },
           { text: 'Event Bus', link: '/realtime' },
           { text: 'Strategies', link: '/strategies' },
+          { text: 'Error Handling', link: '/errors' },
           { text: 'Mocking', link: '/mocking' },
         ]
       },
@@ -61,6 +62,7 @@ export default defineConfig({
         items: [
           { text: 'Auth', link: '/auth' },
           { text: 'Websocket', link: '/websocket' },
+          { text: 'Config', link: '/config' },
         ]
       },
     ],

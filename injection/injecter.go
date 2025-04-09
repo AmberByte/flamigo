@@ -9,11 +9,20 @@ import (
 )
 
 type Repository interface {
+	// AddInjectable adds an injectable to the repository
 	AddInjectable(i any) error
 }
 
 type Provider interface {
+	// Execute executes a function. Parameters are injected if candidates are known
+	//
+	// If the function returns error or injectable is not found, it will be returned.
 	Execute(t any, args ...any) error
+
+	// ExecuteList executes a list of functions. Parameters are injected if candidates are known
+	//
+	// If any function returns error or injectable is not found, it will be returned.
+	// When a function fails further functions will not be executed.
 	ExecuteList(t []any, args ...any) error
 }
 

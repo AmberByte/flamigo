@@ -60,21 +60,25 @@ type Client struct {
 	pubsub           realtime.AppBus
 }
 
+{{if.HasFeature "auth"}}
 func (c *Client) registerUser(u *auth.User) {
 	c.User = u
 	c.Authenticated = true
 	c.lgr = c.lgr.WithFields(logger.ComposeFields(logger.User(u.ID)))
 	c.enableReceivingEvents()
 }
+{{end}}
 
 func (c *Client) unregister() {
 	if c.subscription != nil {
 		c.subscription.Cancel()
 	}
+	{{if.HasFeature "auth"}}
 	if c.User != nil {
 		evt := NewEventDisconnected(*c.User)
 		c.pubsub.Publish(evt)
 	}
+	{{end}}
 }
 
 func (c *Client) SendMessage(topic string, message realtime.ClientMessageMarshaller) {
@@ -125,11 +129,13 @@ func (c *Client) readPump() {
 			c.sendResponse(NewErrorResponse(err, FromCommand(command)))
 			continue
 		}
+		{{if.HasFeature "auth"}}
 		if !c.Authenticated && command.Command() != "app::websocket:auth" {
 			logrus.Printf("Client not authenticated, ignoring message")
 			c.sendResponse(NewErrorResponse(ErrNotAuthorized, FromCommand(command)))
 			continue
 		}
+		{{end}}
 
 		appCtx := flamigo.NewCoreContext(context.TODO(), newWebsocketActor(c))
 		strategyCtx := strategies.NewContext(appCtx, command.Command(), command.Payload())
@@ -206,7 +212,8 @@ func (c *Client) enableReceivingEvents() {
 	subscription := c.pubsub.Subscribe(c.handleReceivables)
 	// it forwards only events that implement ClientMessages interface
 	subscription.OnlyClientMessages()
-	// subscribe to topics that should be forewarded here
+	
+	//TODO: subscribe to topics that should be forewarded here
 	c.subscription = subscription
 }
 

@@ -8,7 +8,7 @@ import (
 
 	core_infra "{{.ProjectModulePath}}/internal/domains/core/infrastructure"
 	"{{.ProjectModulePath}}/internal/api"
-	{{if .HasFeature "config"}}"github.com/amberbyte/flamigo/config"{{end}}
+	{{if .HasFeature "config"}}"{{.ProjectModulePath}}/internal/config"{{end}}
 	{{if .HasFeature "auth"}}auth_infra "{{.ProjectModulePath}}/internal/domains/auth/infrastructure"{{end}}
 	{{if .HasFeature "realtime"}}websocket "{{.ProjectModulePath}}/internal/interfaces/websocket"{{end}}
 )

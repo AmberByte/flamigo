@@ -28,6 +28,30 @@ type UserActor interface {
 	User() *User
 }
 
-func RequireUserActorWithClaims(ctx Context, opts ...flamigo.ActorClaimValidator) (UserActor, error) {
+func RequireUserActorWithClaims(ctx flamigo.Context, opts ...flamigo.ActorClaimValidator) (UserActor, error) {
 	return flamigo.RequireActorWithClaims[UserActor](ctx, opts...)
+}
+
+func IsAuthenticated() flamigo.ActorClaimValidator {
+	return func(ctx context.Context, actor flamigo.Actor) error {
+		if uA, ok := actor.(UserActor); ok {
+			if uA.User() == nil {
+				return ErrNotAuthenticated
+			}
+			return nil
+		}
+		return ErrNoUserActor
+	}
+}
+
+func IsUnauthenticated() flamigo.ActorClaimValidator {
+	return func(ctx context.Context, actor flamigo.Actor) error {
+		if uA, ok := actor.(UserActor); ok {
+			if uA.User() != nil {
+				return ErrAuthenticated
+			}
+			return nil
+		}
+		return ErrNoUserActor
+	}
 }

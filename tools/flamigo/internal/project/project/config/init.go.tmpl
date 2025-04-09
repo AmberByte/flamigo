@@ -1,0 +1,23 @@
+package config
+
+import (
+	"embed"
+	"fmt"
+	"os"
+
+	"github.com/amberbyte/flamigo/config"
+	"github.com/amberbyte/flamigo/injection"
+)
+
+//go:embed configs/*
+var configs embed.FS
+
+func Init(inj injection.DependencyManager) error {
+	configs := config.LoadDirectory(configs, '.')
+	appEnv := os.Getenv("APP_ENV")
+	if envConfig, ok := configs[appEnv]; ok {
+		return inj.AddInjectable(envConfig)
+	}
+
+	return fmt.Errorf("no config found for APP_ENV '%s'", appEnv)
+}

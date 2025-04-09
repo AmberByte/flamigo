@@ -21,10 +21,14 @@ type Error struct {
 	statusCode    int
 }
 
+// Error implements the error interface
 func (e *Error) Error() string {
 	return e.innerError.Error()
 }
 
+// PublicError returns the public error message
+// If no public message is set, it returns the inner error message
+// If no inner error is set, it returns "unknown error"
 func (e *Error) PublicError() string {
 	if e.publicMessage != "" {
 		return e.publicMessage
@@ -36,6 +40,9 @@ func (e *Error) PublicError() string {
 	return "unknown error"
 }
 
+// Unwraps the internal error
+//
+// If there is no inner error, it returns nil
 func (e *Error) Unwrap() error {
 	return e.innerError
 }
@@ -46,18 +53,21 @@ func (e *Error) StatusCode() int {
 
 type ErrorOpt = func(e *Error)
 
+// StatusCode sets the status code
 func StatusCode(code int) ErrorOpt {
 	return func(e *Error) {
 		e.statusCode = code
 	}
 }
 
+// Public sets the public message
 func Public(message string) ErrorOpt {
 	return func(e *Error) {
 		e.publicMessage = message
 	}
 }
 
+// Sets the public message and status code
 func WithPublicResponse(message string, code ...int) ErrorOpt {
 	codeDefault := internal.ParseOptionalParam[int](code, 500)
 	return func(e *Error) {
