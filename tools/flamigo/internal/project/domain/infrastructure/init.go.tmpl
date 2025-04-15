@@ -1,0 +1,18 @@
+package {{.DomainName}}_infra
+
+
+import (
+	"github.com/amberbyte/flamigo/injection"
+)
+
+func Init(inj injection.DependencyManager) error {
+	// initialize your repositories etc here.
+	// you can add them to the domain object
+	d := &domain{}
+	return inj.AddInjectable(d)
+}
+
+var _ {{.DomainName}}.Domain = (*domain)(nil)
+type domain struct {
+	
+}

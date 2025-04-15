@@ -9,24 +9,31 @@ import (
 	"text/template"
 )
 
-//go:embed project/**/*
-var tmplFS embed.FS
+//go:embed project
+var projectFS embed.FS
+
+//go:embed domain
+var domainFS embed.FS
 
 func InitializeProjectFiles(projectRoot string, data any) error {
 
-	return copyTemplateFiles(projectRoot, "/", data)
+	return copyTemplateFiles(projectFS, projectRoot, "/", "project", data)
 }
 
-func copyTemplateFiles(projectRoot string, relativeDir string, data any) error {
-	fmt.Printf("Processing directory: %s\n", path.Join("project", relativeDir))
-	templateFSPath := path.Join("project", relativeDir)
-	templateFiles, err := tmplFS.ReadDir(templateFSPath)
+func InitializeDomainFiles(domainRoot string, data any) error {
+	return copyTemplateFiles(domainFS, domainRoot, "/", "domain", data)
+}
+
+func copyTemplateFiles(fs embed.FS, projectRoot string, relativeDir string, fsRoot string, data any) error {
+	fmt.Printf("Processing directory: %s\n", path.Join(fsRoot, relativeDir))
+	templateFSPath := path.Join(fsRoot, relativeDir)
+	templateFiles, err := fs.ReadDir(templateFSPath)
 	if err != nil {
 		return fmt.Errorf("failed to read directory (%s): %w", templateFSPath, err)
 	}
 
 	// Check for conditions file to determine if the directory should be skipped
-	if conditionsFile, err := tmplFS.ReadFile(path.Join(templateFSPath, "conditions")); err == nil {
+	if conditionsFile, err := fs.ReadFile(path.Join(templateFSPath, "conditions")); err == nil {
 		conditionResult, err := evaluateTemplate(string(conditionsFile), data)
 		if err != nil {
 			return fmt.Errorf("failed to evaluate conditions file (%s): %w", templateFSPath, err)
@@ -41,7 +48,7 @@ func copyTemplateFiles(projectRoot string, relativeDir string, data any) error {
 		templateFSFilePath := path.Join(templateFSPath, file.Name())
 		fmt.Printf("Processing child: %s, isDir: %t\n", templateFSFilePath, file.IsDir())
 		if file.IsDir() {
-			err := copyTemplateFiles(projectRoot, path.Join(relativeDir, file.Name()), data)
+			err := copyTemplateFiles(fs, projectRoot, path.Join(relativeDir, file.Name()), fsRoot, data)
 			if err != nil {
 				return err
 			}
@@ -54,7 +61,7 @@ func copyTemplateFiles(projectRoot string, relativeDir string, data any) error {
 		}
 
 		// Check for conditions file to determine if the directory should be skipped
-		if conditionsFile, err := tmplFS.ReadFile(path.Join(templateFSPath, file.Name()+".conditions")); err == nil {
+		if conditionsFile, err := fs.ReadFile(path.Join(templateFSPath, file.Name()+".conditions")); err == nil {
 			conditionResult, err := evaluateTemplate(string(conditionsFile), data)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate conditions file (%s): %w", templateFSPath, err)
@@ -65,7 +72,7 @@ func copyTemplateFiles(projectRoot string, relativeDir string, data any) error {
 			}
 		}
 
-		fileContent, err := tmplFS.ReadFile(templateFSFilePath)
+		fileContent, err := fs.ReadFile(templateFSFilePath)
 		if err != nil {
 			return fmt.Errorf("failed to read file (%s): %w", templateFSFilePath, err)
 		}

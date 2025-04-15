@@ -1,0 +1,13 @@
+package {{.DomainName}}_app
+
+import (
+	"github.com/amberbyte/flamigo/injection"
+)
+
+var listeners = []any{
+	createExampleListener,
+}
+
+func Init(inj injection.DependencyManager) error {
+	return inj.ExecuteList(listeners)
+}

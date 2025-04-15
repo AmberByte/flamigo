@@ -1,0 +1,20 @@
+package {{.DomainName}}_app
+
+import (
+	"github.com/amberbyte/flamigo/realtime"
+)
+
+// This is just an example subscription. feel free to modify it
+
+func createExampleListener(pubsub realtime.AppBus,) error {
+
+	// * LISTENER
+	listener := realtime.ListenerOnEvent(func(ctx realtime.Context, evt *websocket.EventDisconnected) {
+		// DO your logic here
+	})
+
+	// * SUBSCRIPTION
+	subscription := pubsub.Subscribe(listener)
+	subscription.SubscribeTopic(websocket.TopicUserDisconnected("*").String())
+	return nil
+}
