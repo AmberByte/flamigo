@@ -4,7 +4,45 @@ Flamigo's realtime interface is built on **WebSockets**, allowing you to send or
 
 It integrates directly with the **Realtime Event Bus**, enabling seamless reaction to domain events and bidirectional communication with frontend applications.
 
-> ⚠️ The WebSocket interface must be enabled when initializing a new project.
+::: warning
+The config module refers to the initial setup configuration for enabling WebSocket support. It can only be enabled when initializing a new project because it requires specific scaffolding to be generated.
+:::
+
+---
+
+## Setting Up WebSocket Communication
+
+Follow these steps to enable and use WebSocket communication in your Flamigo project:
+
+1. **Enable WebSocket Support**:
+   Ensure the WebSocket module is enabled during project initialization. If not, you may need to reinitialize the project.
+
+2. **Define WebSocket Strategies**:
+   Create strategies to handle WebSocket messages. For example:
+   ```go
+   func MyWebSocketStrategy(ctx flamigo.Context, payload map[string]interface{}) error {
+       // Handle the WebSocket message
+       return nil
+   }
+   ```
+
+3. **Subscribe Clients to Topics**:
+   In the `client.go` file, subscribe WebSocket clients to topics:
+   ```go
+   client.Subscribe("app::strategy", MyWebSocketStrategy)
+   ```
+
+4. **Frontend Integration**:
+   Use a WebSocket client library (e.g., `native WebSocket` or `socket.io`) to connect to the backend:
+   ```javascript
+   const socket = new WebSocket("ws://your-backend-url");
+   socket.onmessage = (event) => {
+       console.log("Message received:", event.data);
+   };
+   ```
+
+5. **Test the Connection**:
+   Send a test message from the frontend and verify the backend processes it correctly.
 
 ---
 

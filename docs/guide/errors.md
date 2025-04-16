@@ -64,9 +64,27 @@ By using the outermost PublicMessage() you get higher level erorr information wi
 - And attaches a public response:  
   `"Failed to list messages. Please try again later."`
 
-Later, when unwrapping the error chain, this public response can be extracted and forwarded to the user — all while preserving the internal trace for logging or debugging.
+#### Code Example
 
-This pattern enables granular error tracing **and** meaningful end-user communication.
+```go
+func ListMessages(ctx flamigo.Context) error {
+    err := repository.FindMessages(ctx)
+    if err != nil {
+        return flamigo.WrapError("listing messages", err, flamigo.WithPublicResponse("Failed to list messages. Please try again later."))
+    }
+    return nil
+}
+
+func HandleRequest(ctx flamigo.Context) {
+    err := ListMessages(ctx)
+    if err != nil {
+        publicMessage := flamigo.PublicMessage(err)
+        fmt.Println("Public Error:", publicMessage) // Output: "Failed to list messages. Please try again later."
+    }
+}
+```
+
+This pattern ensures that internal errors remain detailed for debugging, while public-facing messages are user-friendly.
 
 ---
 

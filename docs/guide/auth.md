@@ -1,7 +1,10 @@
 # Auth
 
 Authentication in Flamigo is built as a dedicated domain, responsible for handling user identities and login state.  
-When creating a new project, **auth must be explicitly enabled** to activate this functionality.
+
+::: warning
+The config module can only be enabled when initializing a new project.
+:::
 
 The auth domain provides:
 
@@ -70,4 +73,52 @@ Checks whether the actor is not logged in — useful for routes like login, regi
 
 ```go
 actor, err := auth.RequireUserActorWithClaims(ctx, auth.IsUnauthenticated())
+```
+
+---
+
+## Integrating with OAuth2
+
+To integrate OAuth2, a login service could look like the following
+
+```go
+func OAuth2Login(ctx flamigo.Context, token string) (*auth.User, error) {
+    userInfo, err := oauth2.ValidateToken(token)
+    if err != nil {
+        return nil, flamigo.NewError("invalid token", flamigo.WithPublicResponse("Authentication failed."))
+    }
+
+    user := &auth.User{
+        ID:    userInfo.ID,
+        Email: userInfo.Email,
+    }
+    return user, nil
+}
+```
+
+---
+
+## Integrating
+
+To check if a user is validated, you can create ActorClaimValidators
+
+```go
+func IsAuthenticated(ctx flamigo.Context, token string) flamigo.ActorClaimValidator {
+   return func(ctx context.Context, actor flamigo.Actor) error {
+		if uA, ok := actor.(UserActor); ok {
+			if uA.User() != nil {
+				return auth.ErrAuthenticated
+			}
+			return nil
+		}
+		return auth.ErrNoUserActor
+	}
+}
+```
+
+This can then be used together with `RequireUserActorWithClaims`
+```go
+func MyStrategy(ctx strategies.Context) error {
+  actor, err := auth.RequireUserActorWithClaims(ctx, auth.IsAuthenticated())
+}
 ```
