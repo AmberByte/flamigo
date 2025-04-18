@@ -13,7 +13,11 @@ import (
 var configs embed.FS
 
 func Init(inj injection.DependencyManager) error {
-	configs := config.LoadDirectory(configs, '.')
+	configs, err := config.LoadDirectory(configs, "configs")
+	if err != nil {
+		return fmt.Errorf("load config directory: %w", err)
+	}
+
 	appEnv := os.Getenv("APP_ENV")
 	if envConfig, ok := configs[appEnv]; ok {
 		return inj.AddInjectable(envConfig)
