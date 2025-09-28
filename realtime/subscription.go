@@ -24,7 +24,7 @@ type subscription[T Event] struct {
 	onlyClientMessages bool
 	channel            chan published[T]
 	ended              bool
-	topicsLock         sync.Mutex
+	topicsLock         sync.RWMutex
 }
 
 // Cancel ends the subscription. This will close the channel and prevent any further messages from being sent to it.
@@ -68,6 +68,8 @@ func (s *subscription[T]) matchesTopic(topic Topic) bool {
 	if s.all {
 		return true
 	}
+	s.topicsLock.RLock()
+	defer s.topicsLock.RUnlock()
 	for t := range s.topics {
 		if topic.DoesMatch(t) {
 			return true
