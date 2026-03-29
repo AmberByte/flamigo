@@ -12,7 +12,7 @@ type authPayload struct {
 	Token string `json:"token"`
 }
 
-func websocketAuthStrategy(authService auth.Service, strategyRegistry strategies.AppRegistry, pubsub events.AppBus) {
+func websocketAuthStrategy(authService auth.Service, strategyRegistry strategies.AppRegistry, pubsub events.AppBus) error {
 	strategy := func(ctx strategies.Context) {
 		lgr := ctx.Logger()
 		actor, err := flamigo.RequireActorWithClaims[*Actor](ctx, IsWebsocket())
@@ -42,5 +42,5 @@ func websocketAuthStrategy(authService auth.Service, strategyRegistry strategies
 		pubsub.Publish(authEvents.NewUserAuthenticated(*currentUser), newWebsocketActor(c))
 	}
 
-	strategyRegistry.Register("app::websocket:auth", strategy)
+	return strategyRegistry.Register("websocket:auth", strategy)
 }

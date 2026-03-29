@@ -25,17 +25,34 @@ type StrategyFunc func(ctx strategies.Context)
 
 ## Registering Strategies
 
-Strategies are registered by name — usually in the `internal/api/` layer — and grouped logically by application area or domain.
+Strategies are registered by local action name — usually in the `internal/api/` layer — and grouped logically by application area or domain.
 
 ```go
-registry := strategies.NewRegistry("app")
+appRegistry := strategies.NewRegistry[strategies.Context]()
 
-registry.Register("app::domain:doSth", func(ctx strategies.Context) {
+if err := appRegistry.Register("domain:doSth", func(ctx strategies.Context) {
   // Strategy logic here
-})
+}); err != nil {
+  panic(err)
+}
 ```
 
-You can register multiple strategies under one registry, following a consistent naming convention (e.g. `app::domain:action`).
+`Register` expects a local action name such as `domain:action`. It returns an error for invalid names or duplicate registrations.
+
+::: warning
+Register registries and strategies during startup only. The strategies package is configured to be wired up at application initialization time, not mutated during normal runtime.
+:::
+
+If you want to manage multiple namespaces, use a router above the local registries:
+
+```go
+appRegistry := strategies.NewRegistry[strategies.Context]()
+adminRegistry := strategies.NewRegistry[strategies.Context]()
+
+router := strategies.NewRouter[strategies.Context]()
+router.Register("app", appRegistry)
+router.Register("admin", adminRegistry)
+```
 
 ---
 
@@ -51,9 +68,9 @@ type Request interface {
 }
 
 type Response interface {
-  SetResult(payload any) string // Sets the result to return from the strategy
+  SetPayload(payload any)       // Sets the payload to return from the strategy
   SetError(err error)           // Sets an error as the result
-  Result() any
+  Payload() any
   Err() error
   IsOk() bool
   IsError() bool
@@ -66,14 +83,16 @@ This setup provides everything your strategy needs to process input, work with a
 
 ## Calling Strategies
 
-To call a strategy, you compose a strategy context with the appropriate `flamingo.Context`, action and payload, then invoke it through the registry:
+To call a strategy, you compose a strategy context with the appropriate `flamingo.Context`, full action, and payload, then invoke it through the router:
 
 ```go
-registry := strategies.NewRegistry("app")
+appRegistry := strategies.NewRegistry[strategies.Context]()
+router := strategies.NewRouter[strategies.Context]()
+router.Register("app", appRegistry)
 
 ctx := strategies.NewContext(flamigoCtx, "app::foo:bar", `{"foo": "bar"}`)
 
-result := registry.Use(ctx)
+result := router.Invoke(ctx)
 
 if result.IsOk() {
   // Handle success

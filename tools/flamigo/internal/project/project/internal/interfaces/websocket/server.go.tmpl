@@ -11,10 +11,10 @@ import (
 )
 
 
-func Init(auth auth.Service, pubsub events.AppBus, apiRegistry strategies.AppRegistry) error {
+func Init(auth auth.Service, pubsub events.AppBus, apiRegistry strategies.AppRegistry, apiRouter strategies.AppRouter) error {
 
 
-	{{if.HasFeature "auth"}}websocketAuthStrategy(auth, apiRegistry, pubsub){{end}}
+	{{if.HasFeature "auth"}}if err := websocketAuthStrategy(auth, apiRegistry, pubsub); err != nil { return err }{{end}}
 
 	addr := ":8080"
 	fmt.Printf("Starting websocket server at %s", addr)
@@ -26,7 +26,7 @@ func Init(auth auth.Service, pubsub events.AppBus, apiRegistry strategies.AppReg
 	// 	})
 	r.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Received /ws request")
-		serveWs(w, r, pubsub, apiRegistry)
+		serveWs(w, r, pubsub, apiRouter)
 	})
 	err := http.ListenAndServe(addr, r)
 	if err != nil {

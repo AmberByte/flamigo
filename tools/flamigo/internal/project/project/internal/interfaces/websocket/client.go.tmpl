@@ -57,7 +57,7 @@ type Client struct {
 	Authenticated    bool
 	{{if.HasFeature "auth"}}User             *auth.User{{end}}
 	subscription     events.Subscription
-	strategyRegistry strategies.AppRegistry
+	strategyRouter   strategies.AppRouter
 	pubsub           events.AppBus
 }
 
@@ -141,9 +141,9 @@ func (c *Client) readPump() {
 		appCtx := flamigo.NewCoreContext(context.TODO(), newWebsocketActor(c))
 		strategyCtx := strategies.NewContext(appCtx, command.Command(), command.Payload())
 		logrus.Debugf("[CONN] Using strategy %s\n", command.Command())
-		var result strategies.StrategyResult
+		var result strategies.Result
 		if strings.HasPrefix(command.Command(), "app::") {
-			result = c.strategyRegistry.Use(strategyCtx)
+			result = c.strategyRouter.Invoke(strategyCtx)
 		} else {
 			logrus.Infof("Strategy Rejected: invalid scope")
 			c.sendResponse(NewErrorResponse(errInvalidScope, FromCommand(command)))
@@ -155,7 +155,7 @@ func (c *Client) readPump() {
 			continue
 		}
 		if result.IsOk() {
-			c.sendResponse(NewSuccessResponse(command.Command(), result.Response(), FromCommand(command)))
+			c.sendResponse(NewSuccessResponse(command.Command(), result.Payload(), FromCommand(command)))
 			continue
 		}
 	}
@@ -228,7 +228,7 @@ func (c *Client) handleReceivables(ctx events.Context, evt events.Event) {
 }
 
 // serveWs handles websocket requests from the peer.
-func serveWs(w http.ResponseWriter, r *http.Request, pubsub events.AppBus, registry strategies.AppRegistry) {
+func serveWs(w http.ResponseWriter, r *http.Request, pubsub events.AppBus, router strategies.AppRouter) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
@@ -237,7 +237,7 @@ func serveWs(w http.ResponseWriter, r *http.Request, pubsub events.AppBus, regis
 		conn:             conn,
 		sendData:         make(chan []byte, 256),
 		pubsub:           pubsub,
-		strategyRegistry: registry,
+		strategyRouter:   router,
 	}
 
 	// Allow collection of memory referenced by the caller by doing all work in

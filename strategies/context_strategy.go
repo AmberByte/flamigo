@@ -4,10 +4,10 @@ import (
 	flamigo "github.com/amberbyte/flamigo/core"
 )
 
-type StrategyResult interface {
+type Result interface {
 	IsOk() bool
 	IsError() bool
-	Result() interface{}
+	Payload() interface{}
 	Err() error
 }
 

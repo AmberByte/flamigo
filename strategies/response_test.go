@@ -9,11 +9,11 @@ import (
 
 func TestResultResolve(t *testing.T) {
 	req := &strategies.Response{}
-	req.SetResult("test")
+	req.SetPayload("test")
 	assert.True(t, req.IsOk(), "should be resolved")
 	assert.False(t, req.IsError(), "should not be rejected")
 
-	assert.Equal(t, "test", req.Result(), "should have resolved with 'test'")
+	assert.Equal(t, "test", req.Payload(), "should have resolved with 'test'")
 }
 
 func TestResultReject(t *testing.T) {
@@ -23,4 +23,12 @@ func TestResultReject(t *testing.T) {
 	assert.True(t, req.IsError(), "should be rejected")
 
 	assert.Equal(t, "call strategy(): "+assert.AnError.Error(), req.Err().Error(), "should have rejected with ErrStrategyNotFound")
+}
+
+func TestResultWithPayloadAndErrorIsRejected(t *testing.T) {
+	req := &strategies.Response{}
+	req.SetPayload("test")
+	req.SetError(assert.AnError)
+	assert.False(t, req.IsOk(), "should not be resolved when rejected")
+	assert.True(t, req.IsError(), "should be rejected")
 }

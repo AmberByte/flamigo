@@ -9,11 +9,19 @@ import (
 
 func Init(injector injection.Container) error {
 	// Initialize the strategie registry
-	registry := strategies.NewRegistry[strategies.Context]("app")
+	appRegistry := strategies.NewRegistry[strategies.Context]()
+	router := strategies.NewRouter[strategies.Context]()
+	if err := router.Register("app", appRegistry); err != nil {
+		return err
+	}
 
 	// Initialize the event bus
 	eventBus := events.NewBus[events.Event]()
-	if err := injector.Register(registry); err != nil {
+	if err := injector.Register(appRegistry); err != nil {
+		return err
+	}
+
+	if err := injector.Register(router); err != nil {
 		return err
 	}
 

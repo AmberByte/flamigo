@@ -8,7 +8,7 @@ Its convenient to do everything in there, but for larger and more complex stragt
 
 ### 1. Define strategy
 ```go
-func createStrategyGetMessages(strategy strategy.Registry, msgDomain messages.Domain) {// [!code ++:5]
+func createStrategyGetMessages(strategy strategies.Registry[strategies.Context], msgDomain messages.Domain) {// [!code ++:5]
   strategy := func(ctx strategy.Context) {
     // Do some logic here
   }
@@ -17,12 +17,12 @@ func createStrategyGetMessages(strategy strategy.Registry, msgDomain messages.Do
 
 ### 2. Register your strategy in the registry
 ```go
-func createStrategyGetMessages(strategy strategy.Registry, msgDomain messages.Domain) {
+func createStrategyGetMessages(strategy strategies.Registry[strategies.Context], msgDomain messages.Domain) {
   strategy := func(ctx strategy.Context) {
     // Do some logic here
   }
 
-  strategy.Register("app::messages:get", strategy)// [!code ++]
+  strategy.Register("messages:get", strategy)// [!code ++]
 }
 ```
 
@@ -49,7 +49,7 @@ Now your api is registered
 ## Limiting Based on the Actor
 You can also limit based on the actor thas coming in. this can be extended with your own validators to your needs:
 ```go
-func createStrategyGetMessages(strategy strategy.Registry, msgDomain messages.Domain) {
+func createStrategyGetMessages(strategy strategies.Registry[strategies.Context], msgDomain messages.Domain) {
   strategy := func(ctx strategy.Context) {// [!code focus:9]
     err := flamigo.RequireActorWithClaims[flamigo.Actor](ctx, flamigo.IsServer())// [!code ++:5]
     if err != nil {
@@ -59,5 +59,5 @@ func createStrategyGetMessages(strategy strategy.Registry, msgDomain messages.Do
     // Do some logic here
   }
 
-  strategy.Register("app::messages:get", strategy)
+  strategy.Register("messages:get", strategy)
 }

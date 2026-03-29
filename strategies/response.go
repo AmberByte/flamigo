@@ -8,7 +8,7 @@ type Response struct {
 	rejected      error
 }
 
-func (s *Response) SetResult(payload any) {
+func (s *Response) SetPayload(payload any) {
 	s.result = payload
 }
 func (s *Response) SetError(err error) {
@@ -16,13 +16,13 @@ func (s *Response) SetError(err error) {
 }
 
 func (s *Response) IsOk() bool {
-	return s.result != nil || s.result != nil && s.rejected == nil
+	return s.rejected == nil && s.result != nil
 }
 func (s *Response) IsError() bool {
 	return s.rejected != nil
 }
 
-func (s *Response) Result() any {
+func (s *Response) Payload() any {
 	return s.result
 }
 func (s *Response) Err() error {

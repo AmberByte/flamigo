@@ -20,9 +20,9 @@ func (m *MockRegistry) Register(topic string, fn strategies.AppStrategy) error {
 	return args.Error(0)
 }
 
-func (m *MockRegistry) Use(ctx strategies.Context) strategies.StrategyResult {
-	args := m.MethodCalled("Use", ctx)
-	return args.Get(0).(strategies.StrategyResult)
+func (m *MockRegistry) Invoke(action string, ctx strategies.Context) strategies.Result {
+	args := m.MethodCalled("Invoke", action, ctx)
+	return args.Get(0).(strategies.Result)
 
 }
 
@@ -33,7 +33,7 @@ func (m *MockRegistry) TestCallStrategy(topic string, ctx strategies.Context) (a
 		return nil, errors.New("strategy not found")
 	}
 	fn(ctx)
-	return ctx.Response().Result(), ctx.Response().Err()
+	return ctx.Response().Payload(), ctx.Response().Err()
 }
 
 type MockRegistryExpecter struct {
@@ -48,8 +48,8 @@ func (m *MockRegistryExpecter) Register(topic any, fn any) *mock.Call {
 	return m.m.On("Register", topic, fn)
 }
 
-func (m *MockRegistryExpecter) Use(ctx any) *mock.Call {
-	return m.m.On("Use", ctx)
+func (m *MockRegistryExpecter) Invoke(action any, ctx any) *mock.Call {
+	return m.m.On("Invoke", action, ctx)
 }
 
 func NewRegistry() *MockRegistry {
