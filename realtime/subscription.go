@@ -8,8 +8,8 @@ import (
 
 type Subscription interface {
 	Cancel()
-	AddTopic(topic string)
-	RemoveTopic(topic string)
+	AddTopic(topic Topic)
+	RemoveTopic(topic Topic)
 	SubscribeAll()
 }
 
@@ -17,7 +17,7 @@ var _ Subscription = (*subscription[Event])(nil)
 
 type subscription[T Event] struct {
 	id     string
-	topics map[string]bool
+	topics map[string]Topic
 
 	all        bool
 	channel    chan published[T]
@@ -37,7 +37,7 @@ func (s *subscription[T]) Cancel() {
 	})
 }
 
-func (s *subscription[T]) AddTopic(topic string) {
+func (s *subscription[T]) AddTopic(topic Topic) {
 	s.topicsLock.Lock()
 	defer s.topicsLock.Unlock()
 
@@ -45,19 +45,19 @@ func (s *subscription[T]) AddTopic(topic string) {
 		return
 	}
 	if s.topics == nil {
-		s.topics = make(map[string]bool)
+		s.topics = make(map[string]Topic)
 	}
-	s.topics[topic] = true
+	s.topics[topic.String()] = topic
 }
 
-func (s *subscription[T]) RemoveTopic(topic string) {
+func (s *subscription[T]) RemoveTopic(topic Topic) {
 	s.topicsLock.Lock()
 	defer s.topicsLock.Unlock()
 
 	if s.all || s.topics == nil {
 		return
 	}
-	delete(s.topics, topic)
+	delete(s.topics, topic.String())
 }
 
 func (s *subscription[T]) matchesTopic(topic Topic) bool {
@@ -68,8 +68,8 @@ func (s *subscription[T]) matchesTopic(topic Topic) bool {
 		return true
 	}
 
-	for t := range s.topics {
-		if topic.DoesMatch(t) {
+	for _, pattern := range s.topics {
+		if topic.matchesPattern(pattern) {
 			return true
 		}
 	}
@@ -94,11 +94,11 @@ func (s *subscription[T]) publish(msg published[T]) bool {
 
 func newSubscription[T Event](channel chan published[T], onCancel func(), cfg subscribeConfig) *subscription[T] {
 	id, _ := gonanoid.New()
-	topics := make(map[string]bool, len(cfg.topics))
+	topics := make(map[string]Topic, len(cfg.topics))
 	for _, topic := range cfg.topics {
-		topics[topic] = true
+		topics[topic.String()] = topic
 	}
-	return &subscription[T]{
+	subscription := &subscription[T]{
 		id:       id,
 		topics:   topics,
 		all:      cfg.all,
@@ -106,4 +106,14 @@ func newSubscription[T Event](channel chan published[T], onCancel func(), cfg su
 		done:     make(chan struct{}),
 		onCancel: onCancel,
 	}
+	if cfg.lifecycleCtx != nil {
+		go func() {
+			select {
+			case <-cfg.lifecycleCtx.Done():
+				subscription.Cancel()
+			case <-subscription.done:
+			}
+		}()
+	}
+	return subscription
 }

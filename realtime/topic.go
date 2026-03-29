@@ -27,11 +27,14 @@ func (t Topic) String() string {
 //
 // The pattern can contain wildcards (*) to match any part of the topic.
 func (t Topic) DoesMatch(topicPattern string) bool {
-	splitedTopicPattern := strings.Split(topicPattern, "/")
-	if len(t) != len(splitedTopicPattern) {
+	return t.matchesPattern(ParseTopic(topicPattern))
+}
+
+func (t Topic) matchesPattern(pattern Topic) bool {
+	if len(t) != len(pattern) {
 		return false
 	}
-	for i, part := range splitedTopicPattern {
+	for i, part := range pattern {
 		if part != t[i] && part != "*" {
 			return false
 		}
@@ -39,10 +42,10 @@ func (t Topic) DoesMatch(topicPattern string) bool {
 	return true
 }
 
-// TopicParseFromString parses a raw topic string into a Topic
+// ParseTopic parses a raw topic string into a Topic
 //
 // e.g. "foo/bar/baz" -> Topic{"foo", "bar", "baz"}.
-func TopicParseFromString(rawTopicString string) Topic {
+func ParseTopic(rawTopicString string) Topic {
 	return Topic(strings.Split(rawTopicString, "/"))
 }
 

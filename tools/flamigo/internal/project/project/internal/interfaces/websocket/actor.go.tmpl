@@ -22,11 +22,11 @@ type Actor struct {
 	ackId  string
 }
 
-func (a *Actor) Subscribe(topic string) {
+func (a *Actor) Subscribe(topic realtime.Topic) {
 	a.client.subscription.AddTopic(topic)
 }
 
-func (a *Actor) Unsubscribe(topic string) {
+func (a *Actor) Unsubscribe(topic realtime.Topic) {
 	a.client.subscription.RemoveTopic(topic)
 }
 

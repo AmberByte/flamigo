@@ -28,7 +28,7 @@ func TestTopicMatch(t *testing.T) {
 
 	for i, c := range cases {
 		t.Run(fmt.Sprintf("%d Match Test", i+1), func(t *testing.T) {
-			topic := TopicParseFromString(c.topic)
+			topic := ParseTopic(c.topic)
 			result := topic.DoesMatch(c.compareTopic)
 			assert.Equal(t, c.expect, result)
 		})
@@ -40,8 +40,8 @@ func TestTopic_String(t *testing.T) {
 	assert.Equal(t, "topic/a/b/c", topic.String())
 }
 
-func TestTopicParseFromString(t *testing.T) {
-	topic := TopicParseFromString("topic/a/b/c")
+func TestParseTopic(t *testing.T) {
+	topic := ParseTopic("topic/a/b/c")
 	assert.Equal(t, Topic{"topic", "a", "b", "c"}, topic)
 }
 

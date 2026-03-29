@@ -1,13 +1,16 @@
 package realtime
 
+import "context"
+
 type SubscribeOpt func(*subscribeConfig)
 
 type subscribeConfig struct {
-	all    bool
-	topics []string
+	all          bool
+	topics       []Topic
+	lifecycleCtx context.Context
 }
 
-func WithTopic(topic string) SubscribeOpt {
+func WithTopic(topic Topic) SubscribeOpt {
 	return func(cfg *subscribeConfig) {
 		if cfg.all {
 			return
@@ -16,7 +19,7 @@ func WithTopic(topic string) SubscribeOpt {
 	}
 }
 
-func WithTopics(topics ...string) SubscribeOpt {
+func WithTopics(topics ...Topic) SubscribeOpt {
 	return func(cfg *subscribeConfig) {
 		if cfg.all {
 			return
@@ -29,6 +32,12 @@ func WithAllTopics() SubscribeOpt {
 	return func(cfg *subscribeConfig) {
 		cfg.all = true
 		cfg.topics = nil
+	}
+}
+
+func WithLifecycleContext(ctx context.Context) SubscribeOpt {
+	return func(cfg *subscribeConfig) {
+		cfg.lifecycleCtx = ctx
 	}
 }
 

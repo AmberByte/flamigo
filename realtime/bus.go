@@ -3,10 +3,8 @@ package realtime
 import (
 	"context"
 	"sync"
-	"time"
 
 	flamigo "github.com/amberbyte/flamigo/core"
-	"github.com/amberbyte/flamigo/internal"
 )
 
 // Bus is a generic interface for event buses.
@@ -89,10 +87,8 @@ func (b *bus[T]) Subscribe(listener BusListener[T], opts ...SubscribeOpt) Subscr
 			case <-subscription.done:
 				return
 			case msg := <-channel:
-				ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				appCtx := flamigo.NewContext(ctxWithTimeout, msg.actor)
+				appCtx := flamigo.NewContext(context.Background(), msg.actor)
 				listener(NewContext(appCtx), msg.event)
-				cancel()
 				msg.Done()
 			}
 		}
@@ -102,17 +98,26 @@ func (b *bus[T]) Subscribe(listener BusListener[T], opts ...SubscribeOpt) Subscr
 }
 
 func (b *bus[T]) Publish(message T, actor ...flamigo.Actor) {
-	normActor := internal.ParseOptionalParam[flamigo.Actor](actor, flamigo.NewServerActor("unknown"))
-	alreadyReceived := make(map[string]bool)
+	normActor := normalizeActor(actor)
+	topics := message.Topics()
 
-	for _, topic := range message.Topics() {
+	if len(topics) == 1 {
+		for _, sub := range b.getAllSubscribers(topics[0]) {
+			sub.publish(published[T]{event: message, actor: normActor})
+		}
+		return
+	}
+
+	alreadyReceived := make(map[*subscription[T]]struct{})
+
+	for _, topic := range topics {
 		subscribers := b.getAllSubscribers(topic)
 
 		for _, sub := range subscribers {
-			if alreadyReceived[sub.id] {
+			if _, ok := alreadyReceived[sub]; ok {
 				continue
 			}
-			alreadyReceived[sub.id] = true
+			alreadyReceived[sub] = struct{}{}
 
 			sub.publish(published[T]{event: message, actor: normActor})
 		}
@@ -120,18 +125,31 @@ func (b *bus[T]) Publish(message T, actor ...flamigo.Actor) {
 }
 
 func (b *bus[T]) PublishSync(message T, actor ...flamigo.Actor) {
-	normActor := internal.ParseOptionalParam(actor, flamigo.NewServerActor("unknown"))
-	alreadyReceived := make(map[string]bool)
+	normActor := normalizeActor(actor)
+	topics := message.Topics()
 	var wg sync.WaitGroup
 
-	for _, topic := range message.Topics() {
+	if len(topics) == 1 {
+		for _, sub := range b.getAllSubscribers(topics[0]) {
+			wg.Add(1)
+			if !sub.publish(published[T]{event: message, actor: normActor, syncWg: &wg}) {
+				wg.Done()
+			}
+		}
+		wg.Wait()
+		return
+	}
+
+	alreadyReceived := make(map[*subscription[T]]struct{})
+
+	for _, topic := range topics {
 		subscribers := b.getAllSubscribers(topic)
 
 		for _, sub := range subscribers {
-			if alreadyReceived[sub.id] {
+			if _, ok := alreadyReceived[sub]; ok {
 				continue
 			}
-			alreadyReceived[sub.id] = true
+			alreadyReceived[sub] = struct{}{}
 
 			wg.Add(1)
 			if !sub.publish(published[T]{event: message, actor: normActor, syncWg: &wg}) {
@@ -141,6 +159,13 @@ func (b *bus[T]) PublishSync(message T, actor ...flamigo.Actor) {
 	}
 
 	wg.Wait()
+}
+
+func normalizeActor(actor []flamigo.Actor) flamigo.Actor {
+	if len(actor) == 0 || actor[0] == nil {
+		return flamigo.NewServerActor("unknown")
+	}
+	return actor[0]
 }
 
 // NewBus creates a new Bus with optional configuration.

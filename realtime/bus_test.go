@@ -1,7 +1,7 @@
 package realtime
 
 import (
-	"fmt"
+	"context"
 	"testing"
 	"time"
 
@@ -31,7 +31,7 @@ func TestBus(t *testing.T) {
 				}
 			}
 			done <- true
-		}, WithTopic("test"))
+		}, WithTopic(ParseTopic("test")))
 
 		evt := newTestEvent(NewTopic("test"))
 
@@ -48,7 +48,7 @@ func TestBus(t *testing.T) {
 		fnMock := mock.Mock{}
 		bus.Subscribe(func(ctx Context, msg Event) {
 			fnMock.MethodCalled("Called", ctx, msg)
-		}, WithTopics("test", "test2"))
+		}, WithTopics(ParseTopic("test"), ParseTopic("test2")))
 		// Expect the function to only be called once
 		fnMock.On("Called", mock.Anything, mock.Anything).Once().Return(nil)
 
@@ -66,7 +66,7 @@ func TestBus(t *testing.T) {
 			// this makes the test work. when the PublishSync would return early it would fail
 			<-time.After(1 * time.Second)
 			fnMock.MethodCalled("Called", ctx, msg)
-		}, WithTopics("test", "test2"))
+		}, WithTopics(ParseTopic("test"), ParseTopic("test2")))
 		// Expect the function to only be called once
 		fnMock.On("Called", mock.Anything, mock.Anything).Once().Return(nil)
 
@@ -80,7 +80,7 @@ func TestBus(t *testing.T) {
 		done := make(chan bool, 1)
 		s := bus.Subscribe(func(ctx Context, msg Event) {
 			done <- true
-		}, WithTopic("test"))
+		}, WithTopic(ParseTopic("test")))
 		s.Cancel()
 
 		bus.Publish(newTestEvent(NewTopic("test")))
@@ -91,6 +91,28 @@ func TestBus(t *testing.T) {
 		case <-time.After(100 * time.Millisecond):
 		}
 	})
+	t.Run("should auto cancel when lifecycle context ends", func(t *testing.T) {
+		bus := NewBus[Event]()
+		done := make(chan bool, 1)
+		lifecycleCtx, cancel := context.WithCancel(context.Background())
+		s := bus.Subscribe(func(ctx Context, msg Event) {
+			done <- true
+		}, WithTopic(ParseTopic("test")), WithLifecycleContext(lifecycleCtx))
+
+		cancel()
+		time.Sleep(10 * time.Millisecond)
+
+		bus.Publish(newTestEvent(NewTopic("test")))
+
+		select {
+		case <-done:
+			t.Fatal("expected lifecycle context cancelation to stop receiving messages")
+		case <-time.After(100 * time.Millisecond):
+		}
+
+		// Manual cancellation remains safe after lifecycle-driven shutdown.
+		s.Cancel()
+	})
 	t.Run("should allow adding topics after subscribing", func(t *testing.T) {
 		bus := NewBus[Event]()
 		done := make(chan bool, 1)
@@ -98,7 +120,7 @@ func TestBus(t *testing.T) {
 			done <- true
 		})
 
-		s.AddTopic("dynamic")
+		s.AddTopic(ParseTopic("dynamic"))
 		bus.Publish(newTestEvent(NewTopic("dynamic")))
 
 		select {
@@ -107,111 +129,85 @@ func TestBus(t *testing.T) {
 			t.Fatal("expected dynamically added topic to receive messages")
 		}
 	})
-}
+	t.Run("should stop delivering after removing a topic", func(t *testing.T) {
+		bus := NewBus[Event]()
+		done := make(chan bool, 1)
+		s := bus.Subscribe(func(ctx Context, msg Event) {
+			done <- true
+		}, WithTopic(ParseTopic("dynamic")))
 
-type benchmarkEvent struct {
-	topic    string
-	payload  string
-	receiver bool
-}
+		s.RemoveTopic(ParseTopic("dynamic"))
+		bus.Publish(newTestEvent(NewTopic("dynamic")))
 
-func (e benchmarkEvent) Topics() []Topic {
-	return []Topic{NewTopic(e.topic)}
-}
+		select {
+		case <-done:
+			t.Fatal("expected removed topic to stop receiving messages")
+		case <-time.After(100 * time.Millisecond):
+		}
+	})
+	t.Run("should receive all topics after SubscribeAll", func(t *testing.T) {
+		bus := NewBus[Event]()
+		done := make(chan string, 2)
+		s := bus.Subscribe(func(ctx Context, msg Event) {
+			done <- msg.Topics()[0].String()
+		}, WithTopic(ParseTopic("only/initial")))
 
-func BenchmarkBusPublish(b *testing.B) {
-	tests := []struct {
-		subscribers int
-		topics      int
-	}{
-		{subscribers: 1, topics: 1},
-		{subscribers: 10, topics: 1},
-		{subscribers: 100, topics: 1},
-		{subscribers: 10, topics: 10},
-		{subscribers: 100, topics: 10},
-	}
+		s.SubscribeAll()
+		bus.Publish(newTestEvent(NewTopic("foo")))
+		bus.Publish(newTestEvent(NewTopic("bar")))
 
-	for _, tt := range tests {
-		b.Run(fmt.Sprintf("subs=%d/topics=%d", tt.subscribers, tt.topics), func(b *testing.B) {
-			bus := NewBus[benchmarkEvent]()
-
-			// Setup subscribers
-			for i := 0; i < tt.subscribers; i++ {
-				bus.Subscribe(func(ctx Context, event benchmarkEvent) {
-					// Simulate some work
-					_ = event.payload
-				}, benchmarkTopicOpts(tt.topics)...)
+		received := map[string]bool{}
+		for i := 0; i < 2; i++ {
+			select {
+			case topic := <-done:
+				received[topic] = true
+			case <-time.After(1 * time.Second):
+				t.Fatal("expected SubscribeAll to receive any topic")
 			}
+		}
+		if !received["foo"] || !received["bar"] {
+			t.Fatalf("expected to receive both topics, got %#v", received)
+		}
+	})
+	t.Run("should block instead of dropping when subscriber buffer is full", func(t *testing.T) {
+		bus := NewBus[Event](BusOptions{BufferSize: 1})
+		started := make(chan struct{}, 1)
+		release := make(chan struct{})
+		publishDone := make(chan struct{})
 
-			event := benchmarkEvent{
-				topic:    "topic-0",
-				payload:  "test payload",
-				receiver: true,
+		bus.Subscribe(func(ctx Context, msg Event) {
+			select {
+			case started <- struct{}{}:
+			default:
 			}
+			<-release
+		}, WithTopic(ParseTopic("backpressure")))
 
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				bus.Publish(event)
-			}
-		})
-	}
-}
+		go func() {
+			bus.Publish(newTestEvent(NewTopic("backpressure")))
+			bus.Publish(newTestEvent(NewTopic("backpressure")))
+			bus.Publish(newTestEvent(NewTopic("backpressure")))
+			close(publishDone)
+		}()
 
-func BenchmarkBusPublishSync(b *testing.B) {
-	tests := []struct {
-		subscribers int
-		topics      int
-	}{
-		{subscribers: 1, topics: 1},
-		{subscribers: 10, topics: 1},
-		{subscribers: 100, topics: 1},
-		{subscribers: 10, topics: 10},
-		{subscribers: 100, topics: 10},
-	}
+		select {
+		case <-started:
+		case <-time.After(1 * time.Second):
+			t.Fatal("expected first event to start processing")
+		}
 
-	for _, tt := range tests {
-		b.Run(fmt.Sprintf("subs=%d/topics=%d", tt.subscribers, tt.topics), func(b *testing.B) {
-			bus := NewBus[benchmarkEvent]()
+		select {
+		case <-publishDone:
+			t.Fatal("expected Publish to block while the subscriber queue is full")
+		case <-time.After(100 * time.Millisecond):
+		}
 
-			// Setup subscribers
-			for i := 0; i < tt.subscribers; i++ {
-				bus.Subscribe(func(ctx Context, event benchmarkEvent) {
-					// Simulate some work
-					_ = event.payload
-				}, benchmarkTopicOpts(tt.topics)...)
-			}
+		close(release)
 
-			event := benchmarkEvent{
-				topic:    "topic-0",
-				payload:  "test payload",
-				receiver: true,
-			}
-
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				bus.PublishSync(event)
-			}
-		})
-	}
-}
-
-func BenchmarkBusSubscribe(b *testing.B) {
-	bus := NewBus[benchmarkEvent]()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		sub := bus.Subscribe(func(ctx Context, event benchmarkEvent) {
-			// Simulate some work
-			_ = event.payload
-		}, WithAllTopics())
-		sub.Cancel()
-	}
-}
-
-func benchmarkTopicOpts(topics int) []SubscribeOpt {
-	opts := make([]SubscribeOpt, 0, topics)
-	for j := 0; j < topics; j++ {
-		opts = append(opts, WithTopic(fmt.Sprintf("topic-%d", j)))
-	}
-	return opts
+		select {
+		case <-publishDone:
+		case <-time.After(1 * time.Second):
+			t.Fatal("expected Publish to continue once queue space is available")
+		}
+	})
 }
