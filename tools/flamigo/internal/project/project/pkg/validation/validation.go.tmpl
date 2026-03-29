@@ -1,0 +1,38 @@
+package validation
+
+import (
+	"reflect"
+	"strings"
+
+	"github.com/amberbyte/flamigo/strategies"
+	"github.com/go-playground/validator/v10"
+)
+
+var validate = newValidator()
+
+func newValidator() *validator.Validate {
+	v := validator.New()
+	v.RegisterTagNameFunc(func(fld reflect.StructField) string {
+		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+		if name == "-" {
+			return ""
+		}
+		return name
+	})
+	return v
+}
+
+func Register(tag string, fn validator.Func) error {
+	return validate.RegisterValidation(tag, fn)
+}
+
+func Validate(obj any) error {
+	return validate.Struct(obj)
+}
+
+func BindAndValidate(req *strategies.Request, target any) error {
+	if err := req.Bind(target); err != nil {
+		return err
+	}
+	return Validate(target)
+}

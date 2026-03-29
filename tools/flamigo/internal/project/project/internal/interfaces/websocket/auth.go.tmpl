@@ -6,6 +6,7 @@ import (
 	"github.com/amberbyte/flamigo/strategies"
 	auth "{{.ProjectModulePath}}/internal/domains/auth/domain"
 	authEvents "{{.ProjectModulePath}}/internal/domains/auth/domain/events"
+	"{{.ProjectModulePath}}/pkg/validation"
 )
 
 type authPayload struct {
@@ -21,7 +22,7 @@ func websocketAuthStrategy(authService auth.Service, strategyRegistry strategies
 		}
 
 		payload := authPayload{}
-		if err := ctx.Request().BindAndValidate(&payload); err != nil {
+		if err := validation.BindAndValidate(ctx.Request(), &payload); err != nil {
 			ctx.Response().SetError(err)
 			return
 		}
