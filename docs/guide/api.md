@@ -53,7 +53,7 @@ If a strategy is exposed over HTTP, inject an HTTP route registrar from your HTT
 ```go
 func createStrategyGetMessages(
   registry strategies.Registry[strategies.Context],
-  routes httptransport.Registrar,
+  routes http.Registrar,
   msgDomain messages.Domain,
 ) error {
   handler := func(ctx strategies.Context) {
