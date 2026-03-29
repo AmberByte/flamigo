@@ -13,9 +13,9 @@ var defaultDirectories = []string{
 	"{root}/internal/",
 	"{root}/internal/domains",
 	"{root}/internal/api",
+	"{root}/internal/adapters",
 	"{root}/internal",
 	"{root}/pkg",
-	"{root}/interfaces",
 }
 
 func InitializeDirectories(rootPath string) error {
