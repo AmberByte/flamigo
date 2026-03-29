@@ -8,8 +8,8 @@ Its convenient to do everything in there, but for larger and more complex stragt
 
 ### 1. Define strategy
 ```go
-func createStrategyGetMessages(strategy strategies.Registry[strategies.Context], msgDomain messages.Domain) {// [!code ++:5]
-  strategy := func(ctx strategy.Context) {
+func createStrategyGetMessages(registry strategies.Registry[strategies.Context], msgDomain messages.Domain) {// [!code ++:5]
+  handler := func(ctx strategy.Context) {
     // Do some logic here
   }
 }
@@ -17,12 +17,12 @@ func createStrategyGetMessages(strategy strategies.Registry[strategies.Context],
 
 ### 2. Register your strategy in the registry
 ```go
-func createStrategyGetMessages(strategy strategies.Registry[strategies.Context], msgDomain messages.Domain) {
-  strategy := func(ctx strategy.Context) {
+func createStrategyGetMessages(registry strategies.Registry[strategies.Context], msgDomain messages.Domain) error {
+  handler := func(ctx strategy.Context) {
     // Do some logic here
   }
 
-  strategy.Register("messages:get", strategy)// [!code ++]
+  return registry.Register("messages:get", handler)// [!code ++]
 }
 ```
 
@@ -46,11 +46,35 @@ func Init(inj injection.Container) error {
 ```
 Now your api is registered
 
+### Optional: Register HTTP Routes Next To Strategies
+
+If a strategy is exposed over HTTP, inject an HTTP route registrar from your HTTP interface layer and bind the route next to the strategy registration:
+
+```go
+func createStrategyGetMessages(
+  registry strategies.Registry[strategies.Context],
+  routes httptransport.Registrar,
+  msgDomain messages.Domain,
+) error {
+  handler := func(ctx strategies.Context) {
+    // Do some logic here
+  }
+
+  if err := registry.Register("messages:get", handler); err != nil {
+    return err
+  }
+
+  return routes.Handle("GET", "/messages/{id}", "app::messages:get")
+}
+```
+
+This keeps HTTP method/path mapping close to the strategy without moving HTTP concerns into the `strategies` package itself.
+
 ## Limiting Based on the Actor
 You can also limit based on the actor thas coming in. this can be extended with your own validators to your needs:
 ```go
-func createStrategyGetMessages(strategy strategies.Registry[strategies.Context], msgDomain messages.Domain) {
-  strategy := func(ctx strategy.Context) {// [!code focus:9]
+func createStrategyGetMessages(registry strategies.Registry[strategies.Context], msgDomain messages.Domain) error {
+  handler := func(ctx strategy.Context) {// [!code focus:9]
     err := flamigo.RequireActorWithClaims[flamigo.Actor](ctx, flamigo.IsServer())// [!code ++:5]
     if err != nil {
       ctx.Response.SetError(err)
@@ -59,5 +83,6 @@ func createStrategyGetMessages(strategy strategies.Registry[strategies.Context],
     // Do some logic here
   }
 
-  strategy.Register("messages:get", strategy)
+  return registry.Register("messages:get", handler)
 }
+```

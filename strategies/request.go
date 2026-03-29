@@ -8,8 +8,9 @@ import (
 )
 
 type Request struct {
-	action  string
-	payload any
+	action     string
+	payload    any
+	attributes map[string]any
 }
 
 func (c *Request) Action() string {
@@ -18,6 +19,21 @@ func (c *Request) Action() string {
 
 func (c *Request) Payload() any {
 	return c.payload
+}
+
+func (c *Request) SetAttribute(key string, value any) {
+	if c.attributes == nil {
+		c.attributes = make(map[string]any)
+	}
+	c.attributes[key] = value
+}
+
+func (c *Request) Attribute(key string) (any, bool) {
+	if c.attributes == nil {
+		return nil, false
+	}
+	value, ok := c.attributes[key]
+	return value, ok
 }
 
 func (c *Request) Bind(target any) error {
@@ -47,7 +63,8 @@ func (c *Request) BindAndValidate(target any) error {
 
 func NewRequest(action string, payload any) *Request {
 	return &Request{
-		action:  action,
-		payload: payload,
+		action:     action,
+		payload:    payload,
+		attributes: make(map[string]any),
 	}
 }

@@ -37,7 +37,7 @@ func (c *strategyContext) Response() *Response {
 func NewContext(ctx flamigo.Context, action string, payload interface{}) Context {
 	return &strategyContext{
 		Context:  ctx,
-		request:  &Request{action: action, payload: payload},
+		request:  NewRequest(action, payload),
 		response: &Response{strategyTopic: action},
 	}
 }

@@ -54,6 +54,8 @@ router.Register("app", appRegistry)
 router.Register("admin", adminRegistry)
 ```
 
+If you expose strategies over HTTP, keep route binding in the HTTP interface layer, but register routes close to the strategy itself through an injected route registrar.
+
 ---
 
 ## Strategy Context
@@ -65,6 +67,8 @@ type Request interface {
   Action() string      // The action name (e.g. app::domain:doSth)
   Payload() any        // The raw payload sent to the strategy
   Bind(target any) error // Decode the payload (typically JSON) into a target struct
+  SetAttribute(key string, value any)
+  Attribute(key string) (any, bool)
 }
 
 type Response interface {
@@ -78,6 +82,8 @@ type Response interface {
 ```
 
 This setup provides everything your strategy needs to process input, work with actors, and respond in a consistent and structured way.
+
+Transport-specific metadata should be attached as request attributes rather than added directly to the strategy API. For example, an HTTP adapter can attach method, path params, query params, or headers under keys like `http.method`, `http.path_params`, and `http.query`.
 
 ---
 

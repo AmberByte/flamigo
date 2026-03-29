@@ -3,7 +3,7 @@
 layout: home
 
 hero:
-  name: "Flamigo (Preview)"
+  name: "Flamigo"
   text: "Domain Driven Go"
   tagline: Scalable Backend Framework for building Domain Driven Go Backends
   image:
