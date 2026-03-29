@@ -53,7 +53,7 @@ export default defineConfig({
           { text: 'Structure', link: '/structure' },
           { text: '/api', link: '/api' },
           { text: '/domains', link: '/domains' },
-          { text: '/interfaces', link: '/interfaces' },
+          { text: '/adapters', link: '/adapters' },
         ]
       },
       {

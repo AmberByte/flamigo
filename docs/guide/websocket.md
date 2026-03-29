@@ -1,6 +1,6 @@
 # WebSocket (Realtime)
 
-Flamigo's realtime interface is built on **WebSockets**, allowing you to send or push updates from your backend to connected frontend clients — instantly and efficiently.
+Flamigo's realtime WebSocket adapter is built on **WebSockets**, allowing you to send or push updates from your backend to connected frontend clients instantly and efficiently.
 
 It integrates directly with the **Realtime Event Bus**, enabling seamless reaction to domain events and bidirectional communication with frontend applications.
 
@@ -50,7 +50,7 @@ Follow these steps to enable and use WebSocket communication in your Flamigo pro
 
 In line with Flamigo’s actor-based architecture, each WebSocket connection is treated as an **actor**. This allows strategies and domain logic to understand and respond to *who* initiated a given action via WebSocket.
 
-The WebSocket interface provides its own actor type to represent the client.
+The WebSocket adapter provides its own actor type to represent the client.
 
 :::info  
 If the **auth** plugin is also enabled, the WebSocket actor will automatically implement the `UserActor` interface — giving you access to user-specific logic out of the box.  
@@ -71,7 +71,7 @@ These can be used in strategies or other actor-aware logic to adapt behavior to 
 
 ## Authentication
 
-If the authentication plugin is enabled, the WebSocket interface registers a dedicated **authentication strategy**:
+If the authentication plugin is enabled, the WebSocket adapter registers a dedicated **authentication strategy**:
 
 ```txt
 app::websocket:auth
@@ -97,9 +97,9 @@ By default, client setup is minimal — you are expected to **manually subscribe
 
 ## Events
 
-The generated WebSocket scaffold keeps auth, connection lifecycle, and event projection in your app code, but delegates reusable transport mechanics like command decoding, strategy dispatch, and response encoding to `transport/websocket`.
+The generated WebSocket scaffold under `internal/adapters/websocket` keeps auth, connection lifecycle, and event projection in your app code, but delegates reusable transport mechanics like command decoding, strategy dispatch, and response encoding to `transport/websocket`.
 
-The WebSocket interface emits lifecycle events, including:
+The WebSocket adapter emits lifecycle events, including:
 
 - **`EventDisconnected`** – Fired when a client disconnects from the server.  
   You can use this to clean up state, revoke sessions, or notify others.

@@ -1,8 +1,8 @@
 # Realtime
 
-Flamigo comes with built-in support for **realtime event handling**, allowing your application to react instantly to domain events and push updates to the frontend as they happen.
+Flamigo comes with built-in support for event-driven realtime behavior, allowing your application to react instantly to domain events and push updates to the frontend as they happen.
 
-At the core of this system is the **Event Bus**, which serves as a central communication channel for **domain events**. External interfaces like WebSockets can subscribe to those events and project them into UI notifications, live updates, or other transport-specific messages.
+At the core of this system is the **Event Bus**, which serves as a central communication channel for **domain events**. External adapters like WebSockets can subscribe to those events and project them into UI notifications, live updates, or other transport-specific messages.
 
 By leveraging the event bus, Flamigo keeps internal domain reactions decoupled while still making it straightforward to build realtime client updates on top.
 
@@ -86,7 +86,7 @@ The event bus currently makes the following guarantees:
 - `PublishSync` waits until all matching subscribers have finished handling the event.
 - Subscriptions can be changed at runtime with `AddTopic`, `RemoveTopic`, and `SubscribeAll`.
 - A subscription can be bound to a lifecycle context and will auto-cancel when that context ends.
-- Frontend interfaces can subscribe directly to domain events and project them to transport messages.
+- Frontend adapters can subscribe directly to domain events and project them to transport messages.
 
 ## Wildcard subscriptions
 Topic matching is exact by default.

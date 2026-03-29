@@ -8,7 +8,7 @@ This design offers:
 
 - A unified abstraction over different transport layers (HTTP, WebSocket, CLI, etc.)
 - The ability to call strategies from anywhere — including other strategies or domain listeners
-- A testable, reusable structure for external interfaces
+- A testable, reusable structure for external adapters
 - A generalized pattern that can be reused across different domains and contexts
 
 ---
@@ -54,7 +54,7 @@ router.Register("app", appRegistry)
 router.Register("admin", adminRegistry)
 ```
 
-If you expose strategies over HTTP, keep route binding in the HTTP interface layer, but register routes close to the strategy itself through an injected route registrar.
+If you expose strategies over HTTP, keep route binding in the HTTP adapter layer, but register routes close to the strategy itself through an injected route registrar.
 
 ---
 

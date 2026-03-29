@@ -1,16 +1,16 @@
-# /interfaces
-interfaces defines interfaces your project has to the outside world.
-This could be other apis you consume (e.g. openai etc.) but this also has external endpoints you provide (e.g. websockets)
+# /adapters
+Adapters define how your project connects to the outside world.
+This can include inbound adapters like HTTP or WebSockets, but also outbound adapters like external APIs you consume.
 
 
 
-## Defining a interface
-Defining a interface is straightforward
+## Defining an adapter
+Defining an adapter is straightforward.
 
 
 ### 1. Create a init.go with `func Init()`
 ```go
-package myInterface
+package myAdapter
 
 func Init(inj injection.Container) error {// [!code ++:3]
   return inj.Register(openai.NewClient(...))
@@ -29,13 +29,12 @@ import (
 var initializers = []any{
 	//------------  Core domains and packages
 	core_infra.Init,
-    myInterface.Init, // [!code focus] [!code ++]
+    myAdapter.Init, // [!code focus] [!code ++]
 	//------------ Domains Infra
 	// ----------- Domain Apps
 	
 	//------------ Initialize APIs
 	api.Init,
-	websocket.Init,
 }
 
 func main() {
@@ -50,7 +49,7 @@ func main() {
 }
 ```
 ::: info
-The exact place where you may add your interface may be different (e.g. it may be required at the beginning or at the end)
+The exact place where you add an adapter may be different. Some adapters need to be initialized before `api.Init`, others after it.
 :::
 
-Now dependency injection sees your interface and initalizes it
+Now dependency injection sees your adapter and initializes it.

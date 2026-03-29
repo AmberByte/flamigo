@@ -20,14 +20,14 @@ internal/
       infrastructure/    # Infrastructure layer with implementations for repositories, adapters, etc.
                          # (package <domainName>_infra)
 
-  interfaces/            # Interfaces to the outside world, such as WebSockets, message brokers, or external APIs
+  adapters/              # Adapters to the outside world, such as HTTP, WebSockets, or external APIs
 ```
 
 This structure is designed to support modular development and enforce the boundaries between domain logic and infrastructure, making your codebase both testable and scalable.
 
 ## Linking Code Together
 The whole framework links everything together by using dependency injection. the pattern is the following:
-Different packages define a `init.go` file that contains a method like the following to handle dependency injection and initalize the package
+Different packages define an `init.go` file with a method like the following to handle dependency injection and initialize the package.
 ### init.go
 ```go
 package api
@@ -36,16 +36,16 @@ func Init(inj injection.Container, db database.Database) error {
 }
 ```
 
-this can then be used to be called via the dependency manager:
+This can then be invoked through the injector:
 ```go
 container := injection.NewInjector()
 container.Invoke(api.Init)
 ```
 ::: tip
-The dependency manager can also inject itself, which allows nesting Init functions inside of each other
+The injector can also inject itself, which allows nesting `Init` functions inside each other.
 :::
 
-Its common to see a lot of these around your app, which also might call each other nested.
+It is common to have many of these across an app, and they may call each other in a nested way.
 
 e.g. in a small real world app this might be the structure of init functions calling each other:
 ```
@@ -59,7 +59,7 @@ main.go
         -> domains/users/app/init.go
         -> domains/users/messages/init.go
 
-        -> infrastructure/websocket/init.go
+        -> adapters/websocket/init.go
 ```
 
 ::: warning

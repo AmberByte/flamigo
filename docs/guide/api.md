@@ -4,7 +4,7 @@ The API can be structured around your domains or follow any other approach, ther
 
 ## Defining strategies in api layer
 Defining a strategy in api layer can be done in a special dependency injection wrapper.
-Its convenient to do everything in there, but for larger and more complex stragtegies it may be reasonable to split it up.
+It is convenient to do everything there, but for larger and more complex strategies it may be better to split it up.
 
 ### 1. Define strategy
 ```go
@@ -48,7 +48,7 @@ Now your api is registered
 
 ### Optional: Register HTTP Routes Next To Strategies
 
-If a strategy is exposed over HTTP, inject an HTTP route registrar from your HTTP interface layer and bind the route next to the strategy registration:
+If a strategy is exposed over HTTP, inject an HTTP route registrar from your HTTP adapter layer and bind the route next to the strategy registration:
 
 ```go
 func createStrategyGetMessages(
@@ -81,7 +81,7 @@ routes := transporthttp.NewServeMuxRegistrar(mux, dispatcher)
 Then the same `routes.Handle("GET", "/messages/{id}", "app::messages:get")` registrations can live next to strategy setup, while request method, path params, query, headers, and route pattern are attached to the strategy request automatically.
 
 ## Limiting Based on the Actor
-You can also limit based on the actor thas coming in. this can be extended with your own validators to your needs:
+You can also limit behavior based on the incoming actor. This can be extended with your own claim validators as needed:
 ```go
 func createStrategyGetMessages(registry strategies.Registry[strategies.Context], msgDomain messages.Domain) error {
   handler := func(ctx strategy.Context) {// [!code focus:9]
