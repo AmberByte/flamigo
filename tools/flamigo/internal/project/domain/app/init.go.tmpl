@@ -8,6 +8,6 @@ var listeners = []any{
 	createExampleListener,
 }
 
-func Init(inj injection.DependencyManager) error {
-	return inj.ExecuteList(listeners)
+func Init(inj injection.Container) error {
+	return inj.InvokeAll(listeners)
 }

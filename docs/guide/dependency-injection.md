@@ -8,11 +8,11 @@ All dependency resolution is handled at runtime, enabling you to easily substitu
 
 # Dependency Manager
 
-Flamigo ships with a simple but powerful built-in **Dependency Manager**, located in the `injection` package. It handles wiring and resolving dependencies for your application at runtime.
+Flamigo ships with a simple but powerful built-in DI **Container**, located in the `injection` package. It handles wiring and resolving dependencies for your application at runtime.
 
 ## Getting Started
 
-To create a new injecter instance:
+To create a new injector instance:
 
 ```go
 package main
@@ -22,7 +22,7 @@ import (
 )
 
 func main() {
-  inj := injection.NewDependencyInjecter()
+  inj := injection.NewInjector()
 }
 ```
 
@@ -32,7 +32,7 @@ Only add and inject dependencies during your apps startup, never on demand durin
 
 ## Adding a Dependency
 
-You can register a dependency using `AddInjectable(i any) error`:
+You can register a dependency using `Register(i any) error`:
 
 ```go
 package main
@@ -42,10 +42,10 @@ import (
 )
 
 func main() {
-  inj := injection.NewDependencyInjecter()
+  inj := injection.NewInjector()
   myDep := &ExampleRepository{}
 
-  if err := inj.AddInjectable(myDep); err != nil {
+  if err := inj.Register(myDep); err != nil {
     panic(err)
   }
 }
@@ -66,14 +66,14 @@ func createMyLogic(repo *ExampleRepository) error {
 }
 ```
 
-Then execute it through the injecter:
+Then invoke it through the injector:
 
 ```go
 func main() {
-  inj := injection.NewDependencyInjecter()
-  inj.AddInjectable(&ExampleRepository{})
+  inj := injection.NewInjector()
+  inj.Register(&ExampleRepository{})
 
-  if err := inj.Execute(createMyLogic); err != nil {
+  if err := inj.Invoke(createMyLogic); err != nil {
     panic(err)
   }
 }
@@ -83,8 +83,10 @@ func main() {
 Interfaces are also supported — the Dependency Manager automatically matches the appropriate implementation if it satisfies the interface.
 :::
 
-### `Execute` returns an error if:
+### `Invoke` returns an error if:
 
 - A required dependency cannot be resolved  
 - The function returns an error  
 - There’s ambiguity — i.e., multiple injectables satisfy the same interface  
+
+Call-time `Invoke(..., args...)` arguments take precedence over registered injectables. That lets startup code override dependencies explicitly for a single execution without mutating the container.

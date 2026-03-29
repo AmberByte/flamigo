@@ -12,8 +12,8 @@ Defining a interface is straightforward
 ```go
 package myInterface
 
-func Init(inj injection.DependencyManager) error {// [!code ++:3]
-  return inj.AddInjectable(openai.NewClient(...))
+func Init(inj injection.Container) error {// [!code ++:3]
+  return inj.Register(openai.NewClient(...))
 }
 ```
 This is just a minimal example. you may also want to read config, create instances etc.
@@ -39,10 +39,10 @@ var initializers = []any{
 }
 
 func main() {
-	injector := injection.NewInjecter()
+	injector := injection.NewInjector()
 
 	for _, init := range initializers {
-		err = injector.Execute(init)
+		err = injector.Invoke(init)
 		if err != nil {
 			fmt.Printf("Error: %s", err.Error())
 		}

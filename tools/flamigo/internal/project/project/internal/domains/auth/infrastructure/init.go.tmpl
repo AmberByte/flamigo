@@ -4,8 +4,8 @@ import (
 	"github.com/amberbyte/flamigo/injection"
 )
 
-func Init(inject injection.DependencyManager) error {
+func Init(inject injection.Container) error {
 	authService := newAuthService()
-	inject.AddInjectable(authService)
+	inject.Register(authService)
 	return nil
 }

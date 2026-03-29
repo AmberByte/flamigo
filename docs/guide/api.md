@@ -39,8 +39,8 @@ var apiModules = []any{
   createStrategyGetMessages,// [!code ++]
 }
 
-func Init(inj injection.DependencyManager) error {
-	return inj.ExecuteList(apiModules)
+func Init(inj injection.Container) error {
+	return inj.InvokeAll(apiModules)
 }
 
 ```

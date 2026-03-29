@@ -31,15 +31,15 @@ Different packages define a `init.go` file that contains a method like the follo
 ### init.go
 ```go
 package api
-func Init(inj injection.DependencyManager, db database.Database) error {
+func Init(inj injection.Container, db database.Database) error {
   // Does all the initialization
 }
 ```
 
 this can then be used to be called via the dependency manager:
 ```go
-dM := injection.NewDependencyManager()
-dM.Execute(api.Init)
+container := injection.NewInjector()
+container.Invoke(api.Init)
 ```
 ::: tip
 The dependency manager can also inject itself, which allows nesting Init functions inside of each other

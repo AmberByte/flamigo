@@ -8,33 +8,33 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type Repository interface {
-	// AddInjectable adds an injectable to the repository
-	AddInjectable(i any) error
+type Registrar interface {
+	// Register adds an injectable to the container.
+	Register(i any) error
 }
 
-type Provider interface {
-	// Execute executes a function. Parameters are injected if candidates are known
+type Invoker interface {
+	// Invoke executes a function. Parameters are injected if candidates are known
 	//
 	// If the function returns error or injectable is not found, it will be returned.
-	Execute(t any, args ...any) error
+	Invoke(t any, args ...any) error
 
-	// ExecuteList executes a list of functions. Parameters are injected if candidates are known
+	// InvokeAll executes a list of functions. Parameters are injected if candidates are known
 	//
 	// If any function returns error or injectable is not found, it will be returned.
 	// When a function fails further functions will not be executed.
-	ExecuteList(t []any, args ...any) error
+	InvokeAll(t []any, args ...any) error
 }
 
-type DependencyManager interface {
-	Repository
-	Provider
+type Container interface {
+	Registrar
+	Invoker
 }
 
-type ProviderRepository interface {
-	Repository
-	Provider
-}
+type Repository = Registrar
+type Provider = Invoker
+type DependencyManager = Container
+type ProviderRepository = Container
 
 var (
 	errInvalidExecutable = errors.New("provided executable is not a function")
@@ -44,19 +44,23 @@ func errInvalidInjectable(t reflect.Type) error {
 	return fmt.Errorf("no injectable registered for type %s", t.String())
 }
 
+func errAmbiguousInjectable(t reflect.Type, matches string) error {
+	return fmt.Errorf("multiple injectables satisfy type %s: %s", t.String(), matches)
+}
+
 func errAlreadyRegistered(t reflect.Type) error {
 	return fmt.Errorf("injectable of type %s is already registered", t.String())
 }
 
-var _ Repository = (*injecter)(nil)
-var _ Provider = (*injecter)(nil)
-var _ DependencyManager = (*injecter)(nil)
+var _ Registrar = (*Injector)(nil)
+var _ Invoker = (*Injector)(nil)
+var _ Container = (*Injector)(nil)
 
-type injecter struct {
+type Injector struct {
 	injectables map[reflect.Type]reflect.Value
 }
 
-func (injector *injecter) AddInjectable(i any) error {
+func (injector *Injector) Register(i any) error {
 	t := reflect.TypeOf(i)
 	if injector.injectables[t].IsValid() {
 		return errAlreadyRegistered(t)
@@ -66,27 +70,34 @@ func (injector *injecter) AddInjectable(i any) error {
 	return nil
 }
 
-func (injector *injecter) getInjectable(t reflect.Type, args ...map[reflect.Type]reflect.Value) reflect.Value {
-	result := findInjectable(injector.injectables, t)
-	if result.IsValid() {
-		return result
-	}
-	if len(args) > 0 {
-		result = findInjectable(args[0], t)
-	}
-	return result
+// AddInjectable is kept for backward compatibility. Prefer Register.
+func (injector *Injector) AddInjectable(i any) error {
+	return injector.Register(i)
 }
 
-func (injector *injecter) Execute(t any, args ...any) error {
+func (injector *Injector) getInjectable(t reflect.Type, args ...map[reflect.Type]reflect.Value) (reflect.Value, error) {
+	if len(args) > 0 {
+		result, err := findInjectable(args[0], t)
+		if err != nil || result.IsValid() {
+			return result, err
+		}
+	}
+	return findInjectable(injector.injectables, t)
+}
+
+func (injector *Injector) Invoke(t any, args ...any) error {
 	tt := reflect.TypeOf(t)
 	if tt.Kind() != reflect.Func {
 		return errInvalidExecutable
 	}
+	argValues := transformArgs(args...)
 	parameters := []reflect.Value{}
 	for i := 0; i < tt.NumIn(); i++ {
-		injectable := injector.getInjectable(tt.In(i), transformArgs(args...))
+		injectable, err := injector.getInjectable(tt.In(i), argValues)
+		if err != nil {
+			return err
+		}
 		if !injectable.IsValid() {
-			fmt.Printf("Injectable: %#v\n", tt.In(i))
 			return errInvalidInjectable(tt.In(i))
 		}
 		parameters = append(parameters, injectable)
@@ -101,9 +112,9 @@ func (injector *injecter) Execute(t any, args ...any) error {
 	return nil
 }
 
-func (injector *injecter) ExecuteList(t []any, args ...any) error {
+func (injector *Injector) InvokeAll(t []any, args ...any) error {
 	for _, f := range t {
-		err := injector.Execute(f, args...)
+		err := injector.Invoke(f, args...)
 		if err != nil {
 			return err
 		}
@@ -111,11 +122,23 @@ func (injector *injecter) ExecuteList(t []any, args ...any) error {
 	return nil
 }
 
-func NewDependencyInjecter() *injecter {
-	injector := &injecter{
+func NewInjector() *Injector {
+	injector := &Injector{
 		injectables: map[reflect.Type]reflect.Value{},
 	}
 	// Add the injector itself so it can be injected
-	injector.AddInjectable(injector)
+	injector.Register(injector)
 	return injector
+}
+
+func NewInjecter() *Injector {
+	return NewInjector()
+}
+
+func NewDependencyManager() *Injector {
+	return NewInjector()
+}
+
+func NewDependencyInjecter() *Injector {
+	return NewInjector()
 }

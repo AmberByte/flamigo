@@ -55,14 +55,14 @@ func getFunctionPackageName(f interface{}) string {
 func main() {
 	logrus.SetLevel(logrus.DebugLevel)
 	lgr.Info("Starting {{.ProjectName}} backend")
-	injector := injection.NewInjecter()
+	injector := injection.NewInjector()
 
 	for _, init := range initializers {
 		err := validInitializer(init)
 		if err != nil {
 			lgr.Fatalf("verifying initializer (#%s): %s", getFunctionPackageName(init), err)
 		}
-		err = injector.Execute(init)
+		err = injector.Invoke(init)
 		if err != nil {
 
 			lgr.Fatalf("initializing (%s): %s", getFunctionPackageName(init), err)

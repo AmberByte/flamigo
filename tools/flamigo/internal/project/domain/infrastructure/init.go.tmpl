@@ -5,11 +5,11 @@ import (
 	"github.com/amberbyte/flamigo/injection"
 )
 
-func Init(inj injection.DependencyManager) error {
+func Init(inj injection.Container) error {
 	// initialize your repositories etc here.
 	// you can add them to the domain object
 	d := &domain{}
-	return inj.AddInjectable(d)
+	return inj.Register(d)
 }
 
 var _ {{.DomainName}}.Domain = (*domain)(nil)
