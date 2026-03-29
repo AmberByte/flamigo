@@ -43,7 +43,7 @@ type intB interface {
 	GetB() string
 }
 
-func TestInjecter_AddInjectable(t *testing.T) {
+func TestInjector_Register(t *testing.T) {
 	t.Run("it adds an injectable (primitive)", func(t *testing.T) {
 		injecter := NewInjector()
 		err := injecter.Register("test")
@@ -86,7 +86,7 @@ func TestInjecter_AddInjectable(t *testing.T) {
 	})
 }
 
-func TestInjecter_InjectToFunction(t *testing.T) {
+func TestInjector_Invoke(t *testing.T) {
 	t.Run("successfuly injects to a function", func(t *testing.T) {
 		injecter := NewInjector()
 		// Checking for properties to make sure the right one is returned

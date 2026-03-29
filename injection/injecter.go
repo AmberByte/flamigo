@@ -31,11 +31,6 @@ type Container interface {
 	Invoker
 }
 
-type Repository = Registrar
-type Provider = Invoker
-type DependencyManager = Container
-type ProviderRepository = Container
-
 var (
 	errInvalidExecutable = errors.New("provided executable is not a function")
 )
@@ -68,11 +63,6 @@ func (injector *Injector) Register(i any) error {
 	injector.injectables[t] = reflect.ValueOf(i)
 	logrus.Debugf("Added injectable: %s", t.String())
 	return nil
-}
-
-// AddInjectable is kept for backward compatibility. Prefer Register.
-func (injector *Injector) AddInjectable(i any) error {
-	return injector.Register(i)
 }
 
 func (injector *Injector) getInjectable(t reflect.Type, args ...map[reflect.Type]reflect.Value) (reflect.Value, error) {
@@ -129,16 +119,4 @@ func NewInjector() *Injector {
 	// Add the injector itself so it can be injected
 	injector.Register(injector)
 	return injector
-}
-
-func NewInjecter() *Injector {
-	return NewInjector()
-}
-
-func NewDependencyManager() *Injector {
-	return NewInjector()
-}
-
-func NewDependencyInjecter() *Injector {
-	return NewInjector()
 }
