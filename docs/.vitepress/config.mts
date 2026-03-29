@@ -62,7 +62,6 @@ export default defineConfig({
         items: [
           { text: 'Auth', link: '/auth' },
           { text: 'Websocket', link: '/websocket' },
-          { text: 'Config', link: '/config' },
         ]
       },
     ],

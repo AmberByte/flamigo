@@ -3,7 +3,7 @@
 Authentication in Flamigo is built as a dedicated domain, responsible for handling user identities and login state.  
 
 ::: warning
-The config module can only be enabled when initializing a new project.
+This feature can only be enabled when initializing a new project.
 :::
 
 The auth domain provides:

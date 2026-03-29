@@ -5,7 +5,7 @@ Flamigo's realtime interface is built on **WebSockets**, allowing you to send or
 It integrates directly with the **Realtime Event Bus**, enabling seamless reaction to domain events and bidirectional communication with frontend applications.
 
 ::: warning
-The config module refers to the initial setup configuration for enabling WebSocket support. It can only be enabled when initializing a new project because it requires specific scaffolding to be generated.
+WebSocket support can only be enabled when initializing a new project because it requires specific scaffolding to be generated.
 :::
 
 ---

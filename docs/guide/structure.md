@@ -31,7 +31,7 @@ Different packages define a `init.go` file that contains a method like the follo
 ### init.go
 ```go
 package api
-func Init(inj injection.DependencyManager, db database.Database, cnf config.Config) error {
+func Init(inj injection.DependencyManager, db database.Database) error {
   // Does all the initialization
 }
 ```
