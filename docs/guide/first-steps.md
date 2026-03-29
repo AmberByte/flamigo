@@ -1,15 +1,51 @@
-# Install CLI
+# First Steps
 
-To easily scaffold a new project, first install the flamigo cli
+## 1. Install the CLI
 
 ```bash
 go install github.com/amberbyte/flamigo/tools/flamigo@latest
 ```
 
-# Scaffold new project
-to run the scafolding wizard run
+## 2. Scaffold a project
+
 ```bash
 flamigo init
 ```
 
-The wizard asks you how you want to name your go project as well on which optional features of flamigo you want to enable
+The wizard asks for:
+
+- your Go module path
+- optional features to enable
+
+Current optional features include:
+
+- `auth`
+- `transport_http`
+- `transport_websocket`
+
+## 3. Understand the generated structure
+
+The scaffold gives you a project shaped around:
+
+- `internal/domains` for business logic
+- `internal/api` for strategy registration
+- `internal/adapters` for transport and external integrations
+- `pkg` for app-owned reusable helpers
+
+## 4. Wire your application at startup
+
+The generated `cmd/main.go` wires packages through dependency injection during startup.
+
+In practice, the typical flow is:
+
+1. initialize core framework pieces
+2. initialize domain infrastructure
+3. register API strategies
+4. initialize adapters
+5. start transport servers
+
+## 5. Add your first strategy
+
+The next useful step is usually to add a strategy in `internal/api`, register it in the app registry, and then expose it through an adapter such as HTTP or WebSocket.
+
+From there, grow domain logic inside `internal/domains`, not inside the transport layer.
