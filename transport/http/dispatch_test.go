@@ -59,7 +59,7 @@ func TestDispatcherHandleSuccess(t *testing.T) {
 func TestDispatcherHandlePublicError(t *testing.T) {
 	router := &stubRouter{
 		invoke: func(ctx strategies.Context) strategies.Result {
-			ctx.Response().SetError(flamigo.NewError("not allowed", flamigo.Public("Forbidden"), flamigo.StatusCode(stdhttp.StatusForbidden)))
+			ctx.Response().SetError(flamigo.NewError("not allowed", flamigo.Public("Forbidden"), flamigo.Kind(flamigo.ErrorTypeForbidden)))
 			return ctx.Response()
 		},
 	}

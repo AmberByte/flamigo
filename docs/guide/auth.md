@@ -85,7 +85,7 @@ To integrate OAuth2, a login service could look like the following
 func OAuth2Login(ctx flamigo.Context, token string) (*auth.User, error) {
     userInfo, err := oauth2.ValidateToken(token)
     if err != nil {
-        return nil, flamigo.NewError("invalid token", flamigo.WithPublicResponse("Authentication failed."))
+        return nil, flamigo.NewError("invalid token", flamigo.Public("Authentication failed."), flamigo.Kind(flamigo.ErrorTypeUnauthorized))
     }
 
     user := &auth.User{

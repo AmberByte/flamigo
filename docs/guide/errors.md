@@ -52,8 +52,8 @@ You can traverse the error chain to inspect or extract specific layers, includin
 
 Flamigo errors are designed like **onions** — each layer adds more context.
 
-At the core, a `flamigo.Error` may include a **public-facing message**, intended to be forwarded to clients. Higher-level functions (like strategies) can **wrap lower-level technical errors** and attach public responses using the `WithPublicResponse()` option.
-By using the outermost PublicMessage() you get higher level erorr information without showing long internal error messages.
+At the core, a `flamigo.Error` may include a **public-facing message** and an optional **generic error type** such as `not_found`, `bad_request`, or `server_error`.
+By using `flamigo.PublicMessage(err)` and `flamigo.ResolveErrorType(err)` you can expose friendly errors to adapters without coupling core errors to HTTP status codes.
 
 ### Example
 
@@ -70,7 +70,12 @@ By using the outermost PublicMessage() you get higher level erorr information wi
 func ListMessages(ctx flamigo.Context) error {
     err := repository.FindMessages(ctx)
     if err != nil {
-        return flamigo.WrapError("listing messages", err, flamigo.WithPublicResponse("Failed to list messages. Please try again later."))
+        return flamigo.WrapError(
+            "listing messages: %w",
+            err,
+            flamigo.Public("Failed to list messages. Please try again later."),
+            flamigo.Kind(flamigo.ErrorTypeServerError),
+        )
     }
     return nil
 }
@@ -79,7 +84,9 @@ func HandleRequest(ctx flamigo.Context) {
     err := ListMessages(ctx)
     if err != nil {
         publicMessage := flamigo.PublicMessage(err)
+        errorType := flamigo.ResolveErrorType(err)
         fmt.Println("Public Error:", publicMessage) // Output: "Failed to list messages. Please try again later."
+        fmt.Println("Error Type:", errorType)       // Output: "server_error"
     }
 }
 ```

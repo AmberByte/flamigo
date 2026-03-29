@@ -161,7 +161,7 @@ If a strategy fails or an error occurs, the server will respond with a message u
   "topic": "error",
   "payload": {
     "message": "some error message",
-    "status": "status code",
+    "type": "server_error",
     "trace": "if provided, a trace"
   },
   "ack": "12345"
@@ -171,7 +171,7 @@ If a strategy fails or an error occurs, the server will respond with a message u
 This message includes:
 
 - A descriptive error `message`
-- An optional `status` code
+- An optional generic error `type`, such as `bad_request`, `not_found`, or `server_error`
 - A `trace` (for debugging, if available)
 - The `ack` value to match the failed request
 

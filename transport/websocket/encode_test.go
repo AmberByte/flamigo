@@ -33,19 +33,19 @@ func TestEncodeSuccess(t *testing.T) {
 }
 
 func TestEncodeError(t *testing.T) {
-	raw, err := transportws.EncodeError(flamigo.NewError("nope", flamigo.Public("Forbidden"), flamigo.StatusCode(403)), transportws.WithAckKey("abc"))
+	raw, err := transportws.EncodeError(flamigo.NewError("nope", flamigo.Public("Forbidden"), flamigo.Kind(flamigo.ErrorTypeForbidden)), transportws.WithAckKey("abc"))
 	assert.NoError(t, err)
 	assert.Contains(t, string(raw), `"topic":"error"`)
 	assert.Contains(t, string(raw), `"ack":"abc"`)
 	assert.Contains(t, string(raw), `"message":"Forbidden"`)
-	assert.Contains(t, string(raw), `"status":403`)
+	assert.Contains(t, string(raw), `"type":"forbidden"`)
 }
 
 func TestEncodeWrappedPublicError(t *testing.T) {
-	raw, err := transportws.EncodeError(flamigo.WrapError("wrapped: %w", flamigo.NewError("nope", flamigo.Public("Forbidden"), flamigo.StatusCode(403))))
+	raw, err := transportws.EncodeError(flamigo.WrapError("wrapped: %w", flamigo.NewError("nope", flamigo.Public("Forbidden"), flamigo.Kind(flamigo.ErrorTypeForbidden))))
 	assert.NoError(t, err)
 	assert.Contains(t, string(raw), `"message":"Forbidden"`)
-	assert.Contains(t, string(raw), `"status":403`)
+	assert.Contains(t, string(raw), `"type":"forbidden"`)
 }
 
 func TestEncodeErrorWithValidationFields(t *testing.T) {

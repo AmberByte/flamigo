@@ -32,8 +32,8 @@ const (
 )
 
 var (
-	ErrNotAuthorized = flamigo.NewError("unauthorized", flamigo.Public("unauthorized"), flamigo.StatusCode(401))
-	errInvalidScope  = flamigo.NewError("the command scope is invalid", flamigo.Public("forbidden"), flamigo.StatusCode(403))
+	ErrNotAuthorized = flamigo.NewError("unauthorized", flamigo.Public("unauthorized"), flamigo.Kind(flamigo.ErrorTypeUnauthorized))
+	errInvalidScope  = flamigo.NewError("the command scope is invalid", flamigo.Public("forbidden"), flamigo.Kind(flamigo.ErrorTypeForbidden))
 )
 
 var upgrader = websocket.Upgrader{

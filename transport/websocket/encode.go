@@ -68,17 +68,16 @@ func EncodeSuccess(topic string, payload any, opts ...EncodeOption) ([]byte, err
 }
 
 type errorPayload struct {
-	Message     string              `json:"message,omitempty"`
-	Status      int                 `json:"status,omitempty"`
+	Message     string               `json:"message,omitempty"`
+	Type        flamigo.ErrorType    `json:"type,omitempty"`
 	FieldErrors []flamigo.FieldError `json:"fieldErrors,omitempty"`
-	Trace       any                 `json:"trace,omitempty"`
+	Trace       any                  `json:"trace,omitempty"`
 }
 
 func EncodeError(err error, opts ...EncodeOption) ([]byte, error) {
-	publicErr := unwrapPublicError(err)
 	payload := errorPayload{
-		Message: publicErr.PublicError(),
-		Status:  publicErr.StatusCode(),
+		Message: flamigo.PublicMessage(err),
+		Type:    flamigo.ResolveErrorType(err),
 		Trace:   err.Error(),
 	}
 	var validationErr flamigo.ValidationError
@@ -94,24 +93,4 @@ func EncodeError(err error, opts ...EncodeOption) ([]byte, error) {
 		opt(body)
 	}
 	return body.MarshalJSON()
-}
-
-func unwrapPublicError(err error) flamigo.PublicError {
-	var fallback flamigo.PublicError
-	for currentErr := err; currentErr != nil; currentErr = errors.Unwrap(currentErr) {
-		publicErr, ok := currentErr.(flamigo.PublicError)
-		if !ok {
-			continue
-		}
-		if publicErr.StatusCode() != 0 {
-			return publicErr
-		}
-		if fallback == nil {
-			fallback = publicErr
-		}
-	}
-	if fallback != nil {
-		return fallback
-	}
-	return flamigo.WrapError("backend error: %w", err)
 }
