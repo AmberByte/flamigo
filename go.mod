@@ -4,7 +4,7 @@ go 1.25.8
 
 require (
 	github.com/go-playground/assert/v2 v2.2.0
-	github.com/sirupsen/logrus v1.9.3
+	github.com/sirupsen/logrus v1.9.4
 	github.com/stretchr/testify v1.10.0
 )
 
