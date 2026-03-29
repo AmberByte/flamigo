@@ -43,10 +43,6 @@ func (m *MockSubscriberExpected[T]) UnsubscribeTopic(topic string) *mock.Call {
 	return m.m.On("UnsubscribeTopic", topic)
 }
 
-func (m *MockSubscriberExpected[T]) OnlyClientMessages() *mock.Call {
-	return m.m.On("OnlyClientMessages")
-}
-
 func (m *MockSubscriber[T]) Cancel() {
 	m.MethodCalled("Cancel")
 }
@@ -61,10 +57,6 @@ func (m *MockSubscriber[T]) SubscribeTopic(topic string) {
 
 func (m *MockSubscriber[T]) UnsubscribeTopic(topic string) {
 	m.MethodCalled("UnsubscribeTopic", topic)
-}
-
-func (m *MockSubscriber[T]) OnlyClientMessages() {
-	m.MethodCalled("OnlyClientMessages")
 }
 
 func NewMockSubscriber[T realtime.Event]() *MockSubscriber[T] {

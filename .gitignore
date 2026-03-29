@@ -23,5 +23,6 @@ go.work.sum
 
 # env file
 .env
-*/.DS_Store
+# macOS Finder metadata
+.DS_Store
 vendor

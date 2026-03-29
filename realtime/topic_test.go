@@ -14,7 +14,7 @@ func TestTopicMatch(t *testing.T) {
 		expect       bool
 	}{
 		{topic: "topic", compareTopic: "topic", expect: true},
-		{topic: "topic/a/b/c", compareTopic: "*", expect: true},
+		{topic: "topic/a/b/c", compareTopic: "*", expect: false},
 		{topic: "topic", compareTopic: "topic1", expect: false},
 		{topic: "topic/a", compareTopic: "topic/a", expect: true},
 		{topic: "topic/a", compareTopic: "topic/b", expect: false},
@@ -23,6 +23,7 @@ func TestTopicMatch(t *testing.T) {
 		{topic: "topic/a", compareTopic: "topic/*/*", expect: false},
 		{topic: "topic/a/b", compareTopic: "topic/a/b/f", expect: false},
 		{topic: "topic/a/b", compareTopic: "topic/*/*", expect: true},
+		{topic: "topic/a/b", compareTopic: "topic/a", expect: false},
 	}
 
 	for i, c := range cases {

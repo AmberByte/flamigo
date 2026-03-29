@@ -50,15 +50,12 @@ type bus[T Event] struct {
 	bufferSize    int
 }
 
-func (b *bus[T]) getAllSubscribers(topic []string, receivable bool) []*subscription[T] {
+func (b *bus[T]) getAllSubscribers(topic Topic) []*subscription[T] {
 	b.listenersLock.RLock()
 	defer b.listenersLock.RUnlock()
 
 	var subscribers []*subscription[T]
 	for _, sub := range b.listeners {
-		if sub.onlyClientMessages && !receivable {
-			continue
-		}
 		if sub.matchesTopic(topic) {
 			subscribers = append(subscribers, sub)
 		}
@@ -80,20 +77,24 @@ func (b *bus[T]) addListener(subscription *subscription[T]) {
 
 func (b *bus[T]) Subscribe(listener BusListener[T]) Subscription {
 	channel := make(chan published[T], b.bufferSize)
-	subscription := newSubscription[T](channel)
+	subscription := newSubscription(channel, nil)
+	subscription.onCancel = func() {
+		b.removeListener(subscription.id)
+	}
 	b.addListener(subscription)
 
 	go func() {
-		defer b.removeListener(subscription.id)
-		for msg := range channel {
-			go func(msg published[T]) {
+		for {
+			select {
+			case <-subscription.done:
+				return
+			case msg := <-channel:
 				ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				defer cancel()
-
 				appCtx := flamigo.NewContext(ctxWithTimeout, msg.actor)
 				listener(NewContext(appCtx), msg.event)
+				cancel()
 				msg.Done()
-			}(msg)
+			}
 		}
 	}()
 
@@ -105,8 +106,7 @@ func (b *bus[T]) Publish(message T, actor ...flamigo.Actor) {
 	alreadyReceived := make(map[string]bool)
 
 	for _, topic := range message.Topics() {
-		isReceivable := IsClientEvent(message)
-		subscribers := b.getAllSubscribers(topic, isReceivable)
+		subscribers := b.getAllSubscribers(topic)
 
 		for _, sub := range subscribers {
 			if alreadyReceived[sub.id] {
@@ -114,12 +114,7 @@ func (b *bus[T]) Publish(message T, actor ...flamigo.Actor) {
 			}
 			alreadyReceived[sub.id] = true
 
-			select {
-			case sub.channel <- published[T]{event: message, actor: normActor}:
-				// Successfully published
-			default:
-				// Channel full; could log, drop, or handle differently
-			}
+			sub.publish(published[T]{event: message, actor: normActor})
 		}
 	}
 }
@@ -130,8 +125,7 @@ func (b *bus[T]) PublishSync(message T, actor ...flamigo.Actor) {
 	var wg sync.WaitGroup
 
 	for _, topic := range message.Topics() {
-		isReceivable := IsClientEvent(message)
-		subscribers := b.getAllSubscribers(topic, isReceivable)
+		subscribers := b.getAllSubscribers(topic)
 
 		for _, sub := range subscribers {
 			if alreadyReceived[sub.id] {
@@ -140,10 +134,8 @@ func (b *bus[T]) PublishSync(message T, actor ...flamigo.Actor) {
 			alreadyReceived[sub.id] = true
 
 			wg.Add(1)
-			select {
-			case sub.channel <- published[T]{event: message, actor: normActor, syncWg: &wg}:
-			default:
-				wg.Done() // If full, drop and still mark as done
+			if !sub.publish(published[T]{event: message, actor: normActor, syncWg: &wg}) {
+				wg.Done()
 			}
 		}
 	}

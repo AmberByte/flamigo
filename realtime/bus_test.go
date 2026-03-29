@@ -80,6 +80,23 @@ func TestBus(t *testing.T) {
 		bus.PublishSync(evt)
 		fnMock.AssertExpectations(t)
 	})
+	t.Run("should not deliver to canceled subscriptions", func(t *testing.T) {
+		bus := NewBus[Event]()
+		done := make(chan bool, 1)
+		s := bus.Subscribe(func(ctx Context, msg Event) {
+			done <- true
+		})
+		s.SubscribeTopic("test")
+		s.Cancel()
+
+		bus.Publish(newTestEvent(NewTopic("test")))
+
+		select {
+		case <-done:
+			t.Fatal("expected canceled subscription to stop receiving messages")
+		case <-time.After(100 * time.Millisecond):
+		}
+	})
 }
 
 type benchmarkEvent struct {
@@ -90,10 +107,6 @@ type benchmarkEvent struct {
 
 func (e benchmarkEvent) Topics() []Topic {
 	return []Topic{NewTopic(e.topic)}
-}
-
-func (e benchmarkEvent) IsClientEvent() bool {
-	return e.receiver
 }
 
 func BenchmarkBusPublish(b *testing.B) {

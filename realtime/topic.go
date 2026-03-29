@@ -28,7 +28,7 @@ func (t Topic) String() string {
 // The pattern can contain wildcards (*) to match any part of the topic.
 func (t Topic) DoesMatch(topicPattern string) bool {
 	splitedTopicPattern := strings.Split(topicPattern, "/")
-	if len(t) < len(splitedTopicPattern) {
+	if len(t) != len(splitedTopicPattern) {
 		return false
 	}
 	for i, part := range splitedTopicPattern {

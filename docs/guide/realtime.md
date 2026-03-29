@@ -2,9 +2,9 @@
 
 Flamigo comes with built-in support for **realtime event handling**, allowing your application to react instantly to domain events and push updates to the frontend as they happen.
 
-At the core of this system is the **Realtime Event Bus**, which serves as a central communication channel between domains and external interfaces like WebSockets. This makes it easy to decouple your logic while enabling features like live notifications, dynamic UI updates, or collaborative state changes — all without additional setup.
+At the core of this system is the **Realtime Event Bus**, which serves as a central communication channel for **domain events**. External interfaces like WebSockets can subscribe to those events and project them into UI notifications, live updates, or other transport-specific messages.
 
-By leveraging the event bus, Flamigo ensures that both internal domain reactions and external user interfaces stay in sync in real time.
+By leveraging the event bus, Flamigo keeps internal domain reactions decoupled while still making it straightforward to build realtime client updates on top.
 
 # The Event Bus
 All logic for sending realtime events is in `realtime` package
@@ -40,8 +40,8 @@ realtime.NewTopic("users", "userId", "xuah4z47fs")
 
 ## Publishing events
 You can publish events by calling `Publish` method.
-Publishing events is asynchronous, and flamigo does not promise anything regarding the order of the events.
-Publish also directly returns and does not wait for the events to be completely processed. to do so you can use `PublishSync`. However theres a danger of deadlocking which is why using Publish is prefeered
+Publishing events is asynchronous with respect to the listener work, but the bus applies backpressure when subscriber queues fill instead of dropping events silently.
+If you need to wait until all matching listeners have processed an event, use `PublishSync`.
 
 ```go
 bus.Publish(myevent)
@@ -59,23 +59,25 @@ subscription.SubscripeTopic("foo/bar")
 ```
 
 ## Wildcard subscriptions
-Events support wildcards with `*` for suscribing to everything under this hierachy
+Topic matching is exact by default.
+Events support wildcards with `*` per path segment when you want to subscribe more broadly.
 ```go
 listener := func(ctx realtime.Context, evt realtime.Topci) {
   ...
 }
 subscription := bus.Subscribe(listener)
-subscription.SubscripeTopic("foo/*") // Susbcribes to everything under foo
+subscription.SubscripeTopic("foo/*") // Subscribes to foo/<single-segment>
 ```
 For example this is useful when you want to subscribe to all user id topics and not a specific user id: `userId/*`
 
 ## Client Messages
-Events can be forwarded to clients (e.g. websocket connections) as well.
-For this theres the following event interface
+Domain events can be projected to client messages in your interface layer.
+Flamigo still provides a small transport helper in `github.com/amberbyte/flamigo/realtime/client`:
 ```go
-type ClientEvent interface {
-	ClientMessage() ClientMessage
+type Message interface {
+	Topic() string
+	Payload() any
+	MarshalClientPayload() ([]byte, error)
 }
 ```
-
-A event can fullfil this interface to make it forwardable to clients
+In practice, a WebSocket client should subscribe to domain events and translate selected events into `client.Message`s before sending them to the frontend.

@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/websocket"
 	flamigo "github.com/amberbyte/flamigo/core"
 	"github.com/amberbyte/flamigo/realtime"
+	realtimeclient "github.com/amberbyte/flamigo/realtime/client"
 	"github.com/amberbyte/flamigo/strategies"
 	{{if.HasFeature "auth"}}auth "{{.ProjectModulePath}}/internal/domains/auth/domain"{{end}}
 	"github.com/sirupsen/logrus"
@@ -81,7 +82,7 @@ func (c *Client) unregister() {
 	{{end}}
 }
 
-func (c *Client) SendMessage(topic string, message realtime.ClientMessageMarshaller) {
+func (c *Client) SendMessage(topic string, message realtimeclient.MessageMarshaller) {
 	c.sendResponse(NewSuccessResponse(topic, message))
 }
 
@@ -210,25 +211,23 @@ func (c *Client) writePump() {
 
 func (c *Client) enableReceivingEvents() {
 	subscription := c.pubsub.Subscribe(c.handleReceivables)
-	// it forwards only events that implement ClientMessages interface
-	subscription.OnlyClientMessages()
-	
-	//TODO: subscribe to topics that should be forewarded here
+
+	// TODO: subscribe to the domain event topics this client should observe.
 	c.subscription = subscription
 }
 
+func (c *Client) projectEvent(evt realtime.Event) (realtimeclient.Message, bool) {
+	// TODO: translate selected domain events into outbound websocket messages here.
+	// Keep this mapping in the interface layer so your domain events stay transport-agnostic.
+	return nil, false
+}
+
 func (c *Client) handleReceivables(ctx realtime.Context, evt realtime.Event) {
-	// lgr := c.lgr.WithField("method", "handleServerEvent")
-	// lgr.Infof("Client received event (%s): %T", evt.Topics(), evt)
-	receivableEvent, ok := evt.(realtime.ClientEvent)
+	msg, ok := c.projectEvent(evt)
 	if !ok {
-		// lgr.Info("Not a receivable event")
 		return
 	}
-	// lgr.Debugf("Client received event (%s): %T", evt.Topics(), evt)
-	msg := receivableEvent.ClientMessage()
-	sendMsg := NewSuccessResponse(msg.Topic(), msg.Payload())
-	c.sendResponse(sendMsg)
+	c.sendResponse(NewSuccessResponse(msg.Topic(), msg.Payload()))
 }
 
 // serveWs handles websocket requests from the peer.
