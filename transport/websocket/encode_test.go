@@ -1,12 +1,30 @@
 package websocket_test
 
 import (
+	"errors"
 	"testing"
 
 	flamigo "github.com/amberbyte/flamigo/core"
 	transportws "github.com/amberbyte/flamigo/transport/websocket"
 	"github.com/stretchr/testify/assert"
 )
+
+type mockValidationError struct {
+	err    error
+	fields []flamigo.FieldError
+}
+
+func (e mockValidationError) Error() string {
+	return e.err.Error()
+}
+
+func (e mockValidationError) Unwrap() error {
+	return e.err
+}
+
+func (e mockValidationError) FieldErrors() []flamigo.FieldError {
+	return e.fields
+}
 
 func TestEncodeSuccess(t *testing.T) {
 	raw, err := transportws.EncodeSuccess("app::users:get", map[string]string{"id": "42"}, transportws.WithAckKey("abc"))
@@ -20,4 +38,15 @@ func TestEncodeError(t *testing.T) {
 	assert.Contains(t, string(raw), `"topic":"error"`)
 	assert.Contains(t, string(raw), `"ack":"abc"`)
 	assert.Contains(t, string(raw), `"message":"Forbidden"`)
+}
+
+func TestEncodeErrorWithValidationFields(t *testing.T) {
+	raw, err := transportws.EncodeError(mockValidationError{
+		err: errors.New("invalid payload"),
+		fields: []flamigo.FieldError{
+			{Field: "token", Error: "token is required"},
+		},
+	})
+	assert.NoError(t, err)
+	assert.Contains(t, string(raw), `"fieldErrors":[{"field":"token","error":"token is required"}]`)
 }

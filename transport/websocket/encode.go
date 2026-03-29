@@ -3,12 +3,9 @@ package websocket
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
-	"strings"
 
 	flamigo "github.com/amberbyte/flamigo/core"
 	eventclient "github.com/amberbyte/flamigo/events/client"
-	"github.com/go-playground/validator/v10"
 )
 
 type EncodeOption func(*responseBody)
@@ -71,15 +68,10 @@ func EncodeSuccess(topic string, payload any, opts ...EncodeOption) ([]byte, err
 }
 
 type errorPayload struct {
-	Message     string                `json:"message,omitempty"`
-	Status      int                   `json:"status,omitempty"`
-	FieldErrors []FieldErrorFormatted `json:"fieldErrors,omitempty"`
-	Trace       any                   `json:"trace,omitempty"`
-}
-
-type FieldErrorFormatted struct {
-	Field string `json:"field"`
-	Error string `json:"error"`
+	Message     string              `json:"message,omitempty"`
+	Status      int                 `json:"status,omitempty"`
+	FieldErrors []flamigo.FieldError `json:"fieldErrors,omitempty"`
+	Trace       any                 `json:"trace,omitempty"`
 }
 
 func EncodeError(err error, opts ...EncodeOption) ([]byte, error) {
@@ -89,11 +81,13 @@ func EncodeError(err error, opts ...EncodeOption) ([]byte, error) {
 		Status:  publicErr.StatusCode(),
 		Trace:   err.Error(),
 	}
-	switch v := err.(type) {
-	case validator.ValidationErrors:
-		payload.FieldErrors = formatValidationError(v)
-	case flamigo.PublicError:
-		payload.Message = v.PublicError()
+	var validationErr flamigo.ValidationError
+	if errors.As(err, &validationErr) {
+		payload.FieldErrors = validationErr.FieldErrors()
+	}
+
+	if publicErr, ok := err.(flamigo.PublicError); ok {
+		payload.Message = publicErr.PublicError()
 	}
 
 	body := &responseBody{
@@ -115,26 +109,4 @@ func unwrapPublicError(err error) flamigo.PublicError {
 		return flamigo.WrapError("backend error: %w", err)
 	}
 	return unwrapPublicError(unwrappedErr)
-}
-
-func formatValidationError(err validator.ValidationErrors) []FieldErrorFormatted {
-	formatted := make([]FieldErrorFormatted, 0, len(err))
-	for _, e := range err {
-		formatted = append(formatted, FieldErrorFormatted{
-			Field: e.Field(),
-			Error: formatFieldError(e),
-		})
-	}
-	return formatted
-}
-
-func formatFieldError(fe validator.FieldError) string {
-	switch fe.Tag() {
-	case "required":
-		return fmt.Sprintf("%s is required", fe.Field())
-	case "oneof":
-		return fmt.Sprintf("%s must be one of %s", fe.Field(), strings.ReplaceAll(fe.Param(), " ", ","))
-	default:
-		return fmt.Sprintf("%s failed for %s", fe.Field(), fe.Tag())
-	}
 }

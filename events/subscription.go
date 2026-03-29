@@ -1,9 +1,10 @@
 package events
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 	"sync"
-
-	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
 type Subscription interface {
@@ -92,14 +93,21 @@ func (s *subscription[T]) publish(msg published[T]) bool {
 	}
 }
 
+func newSubscriptionID() string {
+	buf := make([]byte, 12)
+	if _, err := rand.Read(buf); err != nil {
+		panic(fmt.Errorf("generate subscription id: %w", err))
+	}
+	return hex.EncodeToString(buf)
+}
+
 func newSubscription[T Event](channel chan published[T], onCancel func(), cfg subscribeConfig) *subscription[T] {
-	id, _ := gonanoid.New()
 	topics := make(map[string]Topic, len(cfg.topics))
 	for _, topic := range cfg.topics {
 		topics[topic.String()] = topic
 	}
 	subscription := &subscription[T]{
-		id:       id,
+		id:       newSubscriptionID(),
 		topics:   topics,
 		all:      cfg.all,
 		channel:  channel,
