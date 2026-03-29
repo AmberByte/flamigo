@@ -1,6 +1,6 @@
 module github.com/amberbyte/flamigo
 
-go 1.24.1
+go 1.25.8
 
 require (
 	github.com/go-playground/assert/v2 v2.2.0
