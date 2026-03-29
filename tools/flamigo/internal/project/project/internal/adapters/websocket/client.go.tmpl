@@ -13,7 +13,7 @@ import (
 	eventclient "github.com/amberbyte/flamigo/events/client"
 	"github.com/amberbyte/flamigo/strategies"
 	transportws "github.com/amberbyte/flamigo/transport/websocket"
-	{{if.HasFeature "auth"}}auth "{{.ProjectModulePath}}/internal/domains/auth/domain"{{end}}
+	{{if .HasFeature "auth"}}auth "{{.ProjectModulePath}}/internal/domains/auth/domain"{{end}}
 	"github.com/sirupsen/logrus"
 )
 
@@ -54,13 +54,13 @@ type Client struct {
 	conn             *websocket.Conn
 	sendData         chan []byte
 	Authenticated    bool
-	{{if.HasFeature "auth"}}User             *auth.User{{end}}
+	{{if .HasFeature "auth"}}User             *auth.User{{end}}
 	subscription     events.Subscription
 	dispatcher       *transportws.Dispatcher
 	pubsub           events.AppBus
 }
 
-{{if.HasFeature "auth"}}
+{{if .HasFeature "auth"}}
 func (c *Client) registerUser(u *auth.User) {
 	c.User = u
 	c.Authenticated = true
@@ -72,7 +72,7 @@ func (c *Client) unregister() {
 	if c.subscription != nil {
 		c.subscription.Cancel()
 	}
-	{{if.HasFeature "auth"}}
+	{{if .HasFeature "auth"}}
 	if c.User != nil {
 		evt := NewEventDisconnected(*c.User)
 		c.pubsub.Publish(evt)
@@ -110,7 +110,7 @@ func (c *Client) decodeCommand(raw []byte) (*transportws.Command, error) {
 }
 
 func (c *Client) createActor(ctx context.Context, cmd *transportws.Command) (flamigo.Actor, error) {
-	{{if.HasFeature "auth"}}if !c.Authenticated && cmd.Action() != "app::websocket:auth" {
+	{{if .HasFeature "auth"}}if !c.Authenticated && cmd.Action() != "app::websocket:auth" {
 		return nil, ErrNotAuthorized
 	}{{end}}
 	return newWebsocketActor(c), nil

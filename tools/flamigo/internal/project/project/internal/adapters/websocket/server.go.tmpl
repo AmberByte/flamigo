@@ -4,20 +4,20 @@ import (
 	"fmt"
 	stdhttp "net/http"
 
-	{{if.HasFeature "auth"}}auth "{{.ProjectModulePath}}/internal/domains/auth/domain"{{end}}
-	{{if.HasFeature "transport_http"}}httptransport "{{.ProjectModulePath}}/internal/adapters/http"{{end}}
+	{{if .HasFeature "auth"}}auth "{{.ProjectModulePath}}/internal/domains/auth/domain"{{end}}
+	{{if .HasFeature "transport_http"}}httptransport "{{.ProjectModulePath}}/internal/adapters/http"{{end}}
 	"github.com/amberbyte/flamigo/events"
 	"github.com/amberbyte/flamigo/strategies"
 )
 
-func Init({{if.HasFeature "auth"}}auth auth.Service, {{end}}{{if.HasFeature "transport_http"}}server *httptransport.Server, {{end}}pubsub events.AppBus, {{if.HasFeature "auth"}}apiRegistry strategies.AppRegistry, {{end}}apiRouter strategies.AppRouter) error {
-	{{if.HasFeature "auth"}}if err := websocketAuthStrategy(auth, apiRegistry, pubsub); err != nil { return err }{{end}}
+func Init({{if .HasFeature "auth"}}auth auth.Service, {{end}}{{if .HasFeature "transport_http"}}server *httptransport.Server, {{end}}pubsub events.AppBus, {{if .HasFeature "auth"}}apiRegistry strategies.AppRegistry, {{end}}apiRouter strategies.AppRouter) error {
+	{{if .HasFeature "auth"}}if err := websocketAuthStrategy(auth, apiRegistry, pubsub); err != nil { return err }{{end}}
 
 	handler := func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		serveWs(w, r, pubsub, apiRouter)
 	}
 
-	{{if.HasFeature "transport_http"}}
+	{{if .HasFeature "transport_http"}}
 	server.HandleFunc("/ws", handler)
 	return nil
 	{{else}}

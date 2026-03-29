@@ -38,7 +38,7 @@ func copyTemplateFiles(fs embed.FS, projectRoot string, relativeDir string, fsRo
 		if err != nil {
 			return fmt.Errorf("failed to evaluate conditions file (%s): %w", templateFSPath, err)
 		}
-		if conditionResult != "true" {
+		if strings.TrimSpace(conditionResult) != "true" {
 			fmt.Printf("Skipping directory: %s\n", templateFSPath)
 			return nil
 		}
@@ -60,13 +60,17 @@ func copyTemplateFiles(fs embed.FS, projectRoot string, relativeDir string, fsRo
 			continue
 		}
 
-		// Check for conditions file to determine if the directory should be skipped
-		if conditionsFile, err := fs.ReadFile(path.Join(templateFSPath, file.Name()+".conditions")); err == nil {
+		// Support both the legacy singular suffix and the plural suffix for file conditions.
+		conditionsFile, ok, err := readTemplateConditionFile(fs, templateFSPath, file.Name())
+		if err != nil {
+			return err
+		}
+		if ok {
 			conditionResult, err := evaluateTemplate(string(conditionsFile), data)
 			if err != nil {
 				return fmt.Errorf("failed to evaluate conditions file (%s): %w", templateFSPath, err)
 			}
-			if conditionResult != "true" {
+			if strings.TrimSpace(conditionResult) != "true" {
 				fmt.Printf("Skipping file: %s\n", templateFSPath)
 				continue
 			}
@@ -92,6 +96,23 @@ func copyTemplateFiles(fs embed.FS, projectRoot string, relativeDir string, fsRo
 	}
 
 	return nil
+}
+
+func readTemplateConditionFile(fs embed.FS, templateFSPath string, fileName string) ([]byte, bool, error) {
+	for _, candidate := range []string{
+		path.Join(templateFSPath, fileName+".condition"),
+		path.Join(templateFSPath, fileName+".conditions"),
+	} {
+		conditionsFile, err := fs.ReadFile(candidate)
+		if err == nil {
+			return conditionsFile, true, nil
+		}
+		if !os.IsNotExist(err) {
+			return nil, false, fmt.Errorf("failed to read conditions file (%s): %w", candidate, err)
+		}
+	}
+
+	return nil, false, nil
 }
 
 func evaluateTemplate(fileContent string, data any) (string, error) {

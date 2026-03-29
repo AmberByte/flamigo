@@ -6,7 +6,7 @@ import (
 
 	flamigo "github.com/amberbyte/flamigo/core"
 	"github.com/amberbyte/flamigo/events"
-	{{if.HasFeature "auth"}}auth "{{.ProjectModulePath}}/internal/domains/auth/domain"{{end}}
+	{{if .HasFeature "auth"}}auth "{{.ProjectModulePath}}/internal/domains/auth/domain"{{end}}
 )
 
 const ActorType string = "websocket"
@@ -16,7 +16,7 @@ var (
 )
 
 var _ flamigo.Actor = (*Actor)(nil)
-{{if.HasFeature "auth"}}var _ auth.UserActor = (*Actor)(nil){{end}}
+{{if .HasFeature "auth"}}var _ auth.UserActor = (*Actor)(nil){{end}}
 
 type Actor struct {
 	client *Client
@@ -34,7 +34,7 @@ func (a *Actor) Type() string {
 	return "websocket"
 }
 
-{{if.HasFeature "auth"}}
+{{if .HasFeature "auth"}}
 func (a *Actor) User() *auth.User {
 	return a.client.User
 }

@@ -1,1 +1,1 @@
-{{if.HasFeature "transport_websocket"}}true{{end}}
+{{if .HasFeature "transport_websocket"}}true{{end}}
