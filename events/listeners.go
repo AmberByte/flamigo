@@ -1,4 +1,4 @@
-package realtime
+package events
 
 import "github.com/sirupsen/logrus"
 
@@ -11,7 +11,7 @@ type AppListener = BusListener[Event]
 //
 // Example:
 //
-//	realtime.ListenerOnEvent(func(ctx realtime.Context, message MyEvent) {})
+//	events.ListenerOnEvent(func(ctx events.Context, message MyEvent) {})
 func ListenerOnEvent[T Event](listener BusListener[T]) AppListener {
 	return func(context Context, message Event) {
 		if typed, ok := message.(T); ok {

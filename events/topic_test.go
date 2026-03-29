@@ -1,4 +1,4 @@
-package realtime
+package events
 
 import (
 	"fmt"
@@ -48,9 +48,4 @@ func TestParseTopic(t *testing.T) {
 func TestNewTopic(t *testing.T) {
 	topic := NewTopic("topic", "a", "b", "c")
 	assert.Equal(t, Topic{"topic", "a", "b", "c"}, topic)
-}
-
-func TestBuildClientTopic(t *testing.T) {
-	topic := BuildClientTopic("topic", "a", "b", "c")
-	assert.Equal(t, "topic:a:b:c", topic)
 }

@@ -9,8 +9,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	flamigo "github.com/amberbyte/flamigo/core"
-	"github.com/amberbyte/flamigo/realtime"
-	realtimeclient "github.com/amberbyte/flamigo/realtime/client"
+	"github.com/amberbyte/flamigo/events"
+	eventclient "github.com/amberbyte/flamigo/events/client"
 	"github.com/amberbyte/flamigo/strategies"
 	{{if.HasFeature "auth"}}auth "{{.ProjectModulePath}}/internal/domains/auth/domain"{{end}}
 	"github.com/sirupsen/logrus"
@@ -56,9 +56,9 @@ type Client struct {
 	sendData         chan []byte
 	Authenticated    bool
 	{{if.HasFeature "auth"}}User             *auth.User{{end}}
-	subscription     realtime.Subscription[realtime.Event]
+	subscription     events.Subscription
 	strategyRegistry strategies.AppRegistry
-	pubsub           realtime.AppBus
+	pubsub           events.AppBus
 }
 
 {{if.HasFeature "auth"}}
@@ -82,7 +82,7 @@ func (c *Client) unregister() {
 	{{end}}
 }
 
-func (c *Client) SendMessage(topic string, message realtimeclient.MessageMarshaller) {
+func (c *Client) SendMessage(topic string, message eventclient.MessageMarshaller) {
 	c.sendResponse(NewSuccessResponse(topic, message))
 }
 
@@ -213,13 +213,13 @@ func (c *Client) enableReceivingEvents() {
 	c.subscription = c.pubsub.Subscribe(c.handleReceivables)
 }
 
-func (c *Client) projectEvent(evt realtime.Event) (realtimeclient.Message, bool) {
+func (c *Client) projectEvent(evt events.Event) (eventclient.Message, bool) {
 	// TODO: translate selected domain events into outbound websocket messages here.
 	// Keep this mapping in the interface layer so your domain events stay transport-agnostic.
 	return nil, false
 }
 
-func (c *Client) handleReceivables(ctx realtime.Context, evt realtime.Event) {
+func (c *Client) handleReceivables(ctx events.Context, evt events.Event) {
 	msg, ok := c.projectEvent(evt)
 	if !ok {
 		return
@@ -228,7 +228,7 @@ func (c *Client) handleReceivables(ctx realtime.Context, evt realtime.Event) {
 }
 
 // serveWs handles websocket requests from the peer.
-func serveWs(w http.ResponseWriter, r *http.Request, pubsub realtime.AppBus, registry strategies.AppRegistry) {
+func serveWs(w http.ResponseWriter, r *http.Request, pubsub events.AppBus, registry strategies.AppRegistry) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return

@@ -6,13 +6,12 @@ import (
 
 	"github.com/gorilla/mux"
 	{{if.HasFeature "auth"}}auth "{{.ProjectModulePath}}/internal/domains/auth/domain"{{end}}
-	"github.com/amberbyte/flamigo/realtime"
+	"github.com/amberbyte/flamigo/events"
 	"github.com/amberbyte/flamigo/strategies"
-	"github.com/sirupsen/logrus"
 )
 
 
-func Init(auth auth.Service, pubsub realtime.AppBus, apiRegistry strategies.AppRegistry) error {
+func Init(auth auth.Service, pubsub events.AppBus, apiRegistry strategies.AppRegistry) error {
 
 
 	{{if.HasFeature "auth"}}websocketAuthStrategy(auth, apiRegistry, pubsub){{end}}

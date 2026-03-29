@@ -1,14 +1,10 @@
-package realtime
+package events
 
 import (
 	"strings"
 
 	flamigo "github.com/amberbyte/flamigo/core"
 )
-
-func BuildClientTopic(parts ...string) string {
-	return strings.Join(parts, ":")
-}
 
 type Publisher interface {
 	Publish(event Event, actor ...flamigo.Actor)

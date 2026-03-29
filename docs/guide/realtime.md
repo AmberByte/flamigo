@@ -2,24 +2,24 @@
 
 Flamigo comes with built-in support for **realtime event handling**, allowing your application to react instantly to domain events and push updates to the frontend as they happen.
 
-At the core of this system is the **Realtime Event Bus**, which serves as a central communication channel for **domain events**. External interfaces like WebSockets can subscribe to those events and project them into UI notifications, live updates, or other transport-specific messages.
+At the core of this system is the **Event Bus**, which serves as a central communication channel for **domain events**. External interfaces like WebSockets can subscribe to those events and project them into UI notifications, live updates, or other transport-specific messages.
 
 By leveraging the event bus, Flamigo keeps internal domain reactions decoupled while still making it straightforward to build realtime client updates on top.
 
 This means the same domain event can drive both backend reactions and frontend updates. Flamigo does not require a separate "frontend event bus" for that pattern.
 
 # The Event Bus
-All logic for sending realtime events is in `realtime` package
+All logic for sending events is in the `events` package.
 
 ```go
 package main
 
 import (
-  "github.com/amberbyte/flamigo/realtime"
+  "github.com/amberbyte/flamigo/events"
 )
 
 func main() {
-  bus := realtime.NewBus()
+  bus := events.NewBus[events.Event]()
 }
 ```
 
@@ -37,7 +37,7 @@ A event must carry a list of topics (at least one).
 A Topic is composed hierachically (e.g. users/userId/xuah4z47fs)
 
 ```go
-realtime.NewTopic("users", "userId", "xuah4z47fs")
+events.NewTopic("users", "userId", "xuah4z47fs")
 ```
 
 ## Publishing events
@@ -53,31 +53,31 @@ bus.Publish(myevent)
 You can receive on topics by creating a listener function and then subscribing to topics
 
 ```go
-listener := func(ctx realtime.Context, evt realtime.Topci) {
+listener := func(ctx events.Context, evt events.Event) {
   ...
 }
-subscription := bus.Subscribe(listener, realtime.WithTopic(realtime.ParseTopic("foo/bar")))
+subscription := bus.Subscribe(listener, events.WithTopic(events.ParseTopic("foo/bar")))
 ```
 
 If you need to react to runtime state changes, you can still adjust an existing subscription:
 ```go
-subscription.AddTopic(realtime.ParseTopic("servers/123"))
-subscription.RemoveTopic(realtime.ParseTopic("servers/old"))
+subscription.AddTopic(events.ParseTopic("servers/123"))
+subscription.RemoveTopic(events.ParseTopic("servers/old"))
 ```
 
 You can also bind a subscription to a lifecycle context:
 ```go
 subscription := bus.Subscribe(
   listener,
-  realtime.WithTopic(realtime.ParseTopic("servers/123")),
-  realtime.WithLifecycleContext(ctx),
+  events.WithTopic(events.ParseTopic("servers/123")),
+  events.WithLifecycleContext(ctx),
 )
 ```
 When that context is canceled, the subscription is canceled automatically. Calling `subscription.Cancel()` manually is still safe.
 
 ## Contract
 
-The realtime bus currently makes the following guarantees:
+The event bus currently makes the following guarantees:
 
 - An event is delivered to a subscription if any of the subscription's topics match one of the event topics.
 - A subscription receives an event at most once, even if multiple registered topics match the same event.
@@ -92,16 +92,16 @@ The realtime bus currently makes the following guarantees:
 Topic matching is exact by default.
 Events support wildcards with `*` per path segment when you want to subscribe more broadly.
 ```go
-listener := func(ctx realtime.Context, evt realtime.Topci) {
+listener := func(ctx events.Context, evt events.Event) {
   ...
 }
-subscription := bus.Subscribe(listener, realtime.WithTopic(realtime.ParseTopic("foo/*"))) // Subscribes to foo/<single-segment>
+subscription := bus.Subscribe(listener, events.WithTopic(events.ParseTopic("foo/*"))) // Subscribes to foo/<single-segment>
 ```
 For example this is useful when you want to subscribe to all user id topics and not a specific user id: `userId/*`
 
 ## Client Messages
 Domain events can be projected to client messages in your interface layer.
-Flamigo still provides a small transport helper in `github.com/amberbyte/flamigo/realtime/client`:
+Flamigo still provides a small transport helper in `github.com/amberbyte/flamigo/events/client`:
 ```go
 type Message interface {
 	Topic() string

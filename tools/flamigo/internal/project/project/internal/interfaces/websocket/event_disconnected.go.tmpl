@@ -1,7 +1,7 @@
 package websocket
 
 import (
-	"github.com/amberbyte/flamigo/realtime"
+	"github.com/amberbyte/flamigo/events"
 	auth "{{.ProjectModulePath}}/internal/domains/auth/domain"
 )
 
@@ -20,6 +20,6 @@ func (e *EventDisconnected) User() auth.User {
 	return e.user
 }
 
-func (e *EventDisconnected) Topics() []realtime.Topic {
-	return []realtime.Topic{TopicUserDisconnected(e.user.ID)}
+func (e *EventDisconnected) Topics() []events.Topic {
+	return []events.Topic{TopicUserDisconnected(e.user.ID)}
 }

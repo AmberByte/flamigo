@@ -1,19 +1,19 @@
-package mock_realtime
+package mock_events
 
 import (
 	"errors"
 
 	flamigo "github.com/amberbyte/flamigo/core"
 	"github.com/amberbyte/flamigo/internal"
-	"github.com/amberbyte/flamigo/realtime"
+	"github.com/amberbyte/flamigo/events"
 	"github.com/stretchr/testify/mock"
 )
 
-type MockPublisher[Evt realtime.Event] struct {
+type MockPublisher[Evt events.Event] struct {
 	mock.Mock
 }
 
-func (m *MockPublisher[Evt]) Publish(event realtime.Event) {
+func (m *MockPublisher[Evt]) Publish(event events.Event) {
 	for _, topic := range event.Topics() {
 		m.MethodCalled("Publish", topic, event)
 	}
@@ -24,15 +24,15 @@ func (m *MockPublisher[Evt]) ExpectPublish(topic string, payload ...any) *mock.C
 	return m.On("Publish", topic, payloadD)
 }
 
-func NewMockPublisher() *MockPublisher[realtime.Event] {
-	return &MockPublisher[realtime.Event]{}
+func NewMockPublisher() *MockPublisher[events.Event] {
+	return &MockPublisher[events.Event]{}
 }
 
-func NewCustomMockPublisher[Evt realtime.Event]() *MockPublisher[Evt] {
+func NewCustomMockPublisher[Evt events.Event]() *MockPublisher[Evt] {
 	return &MockPublisher[Evt]{}
 }
 
-var _ realtime.AppBus = (*MockBus[realtime.Event])(nil)
+var _ events.AppBus = (*MockBus[events.Event])(nil)
 
 type MockBus_Expecter struct {
 	mock *mock.Mock
@@ -52,35 +52,35 @@ func (m *MockBus_Expecter) PublishSync(subscription any, actor any) *mock.Call {
 	return m.Publish(subscription, actor)
 }
 
-type MockAppBus = MockBus[realtime.Event]
+type MockAppBus = MockBus[events.Event]
 
-type MockBus[Evt realtime.Event] struct {
+type MockBus[Evt events.Event] struct {
 	mock.Mock
-	listeners map[realtime.Subscription]realtime.BusListener[realtime.Event]
+	listeners map[events.Subscription]events.BusListener[events.Event]
 }
 
-func (m *MockBus[Evt]) Subscribe(subscription realtime.BusListener[realtime.Event], opts ...realtime.SubscribeOpt) realtime.Subscription {
+func (m *MockBus[Evt]) Subscribe(subscription events.BusListener[events.Event], opts ...events.SubscribeOpt) events.Subscription {
 	callArgs := []any{subscription}
 	for range opts {
 		callArgs = append(callArgs, mock.Anything)
 	}
 	args := m.Called(callArgs...)
-	subscriber := args.Get(0).(realtime.Subscription)
+	subscriber := args.Get(0).(events.Subscription)
 	m.listeners[subscriber] = subscription
 	return subscriber
 }
 
-func (m *MockBus[Evt]) Publish(event realtime.Event, actor ...flamigo.Actor) {
+func (m *MockBus[Evt]) Publish(event events.Event, actor ...flamigo.Actor) {
 	actorD := internal.ParseOptionalParam(actor, nil)
 	m.Called(event, actorD)
 }
 
-func (m *MockBus[Evt]) PublishSync(event realtime.Event, actor ...flamigo.Actor) {
+func (m *MockBus[Evt]) PublishSync(event events.Event, actor ...flamigo.Actor) {
 	// In mocking we do not distinguish between sync and async
 	m.Publish(event, actor...)
 }
 
-func (m *MockBus[Evt]) TRIGGER(subscription realtime.Subscription, ctx realtime.Context, event realtime.Event) error {
+func (m *MockBus[Evt]) TRIGGER(subscription events.Subscription, ctx events.Context, event events.Event) error {
 	if listener, ok := m.listeners[subscription]; ok {
 		listener(ctx, event)
 		return nil
@@ -92,8 +92,8 @@ func (m *MockBus[Evt]) EXPECT() *MockBus_Expecter {
 	return &MockBus_Expecter{&m.Mock}
 }
 
-func NewBus() *MockBus[realtime.Event] {
-	return &MockBus[realtime.Event]{
-		listeners: make(map[realtime.Subscription]realtime.BusListener[realtime.Event]),
+func NewBus() *MockBus[events.Event] {
+	return &MockBus[events.Event]{
+		listeners: make(map[events.Subscription]events.BusListener[events.Event]),
 	}
 }

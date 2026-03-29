@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	flamigo "github.com/amberbyte/flamigo/core"
+	"github.com/amberbyte/flamigo/events"
 	{{if.HasFeature "auth"}}auth "{{.ProjectModulePath}}/internal/domains/auth/domain"{{end}}
 )
 
@@ -22,11 +23,11 @@ type Actor struct {
 	ackId  string
 }
 
-func (a *Actor) Subscribe(topic realtime.Topic) {
+func (a *Actor) Subscribe(topic events.Topic) {
 	a.client.subscription.AddTopic(topic)
 }
 
-func (a *Actor) Unsubscribe(topic realtime.Topic) {
+func (a *Actor) Unsubscribe(topic events.Topic) {
 	a.client.subscription.RemoveTopic(topic)
 }
 

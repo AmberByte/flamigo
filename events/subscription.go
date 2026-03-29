@@ -1,4 +1,4 @@
-package realtime
+package events
 
 import (
 	"sync"

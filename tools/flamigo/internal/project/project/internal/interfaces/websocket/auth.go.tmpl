@@ -2,7 +2,7 @@ package websocket
 
 import (
 	flamigo "github.com/amberbyte/flamigo/core"
-	"github.com/amberbyte/flamigo/realtime"
+	"github.com/amberbyte/flamigo/events"
 	"github.com/amberbyte/flamigo/strategies"
 	auth "{{.ProjectModulePath}}/internal/domains/auth/domain"
 	authEvents "{{.ProjectModulePath}}/internal/domains/auth/domain/events"
@@ -12,7 +12,7 @@ type authPayload struct {
 	Token string `json:"token"`
 }
 
-func websocketAuthStrategy(authService auth.Service, strategyRegistry strategies.AppRegistry, pubsub realtime.AppBus) {
+func websocketAuthStrategy(authService auth.Service, strategyRegistry strategies.AppRegistry, pubsub events.AppBus) {
 	strategy := func(ctx strategies.Context) {
 		lgr := ctx.Logger()
 		actor, err := flamigo.RequireActorWithClaims[*Actor](ctx, IsWebsocket())

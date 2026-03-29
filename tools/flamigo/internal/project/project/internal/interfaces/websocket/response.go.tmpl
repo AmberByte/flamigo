@@ -9,18 +9,18 @@ import (
 	"github.com/go-playground/validator/v10"
 
 	flamigo "github.com/amberbyte/flamigo/core"
-	realtimeclient "github.com/amberbyte/flamigo/realtime/client"
+	eventclient "github.com/amberbyte/flamigo/events/client"
 )
 
 func marshallPayload(payload interface{}) ([]byte, error) {
 	switch v := payload.(type) {
-	case realtimeclient.MessageMarshaller:
+	case eventclient.MessageMarshaller:
 		return v.MarshalClientPayload()
 	case json.Marshaler:
-		// responseLgr.Warnf("Used a json.Marshaller for websocket payload. if you want to use a message, please be more verbose and use realtime/client.MessageMarshaller instead: %v", payload)
+		// responseLgr.Warnf("Used a json.Marshaller for websocket payload. if you want to use a message, please be more verbose and use events/client.MessageMarshaller instead: %v", payload)
 		return v.MarshalJSON()
 	default:
-		// responseLgr.Warnf("Used a JSON Marshall for websocket payload. if you want to use a message, please be more verbose and use realtime/client.MessageMarshaller instead: %v", payload)
+		// responseLgr.Warnf("Used a JSON Marshall for websocket payload. if you want to use a message, please be more verbose and use events/client.MessageMarshaller instead: %v", payload)
 		return json.Marshal(payload)
 	}
 }

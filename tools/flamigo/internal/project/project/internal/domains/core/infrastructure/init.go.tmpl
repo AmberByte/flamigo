@@ -3,7 +3,7 @@ package core_infra
 import (
 	"github.com/amberbyte/flamigo/injection"
 
-	"github.com/amberbyte/flamigo/realtime"
+	"github.com/amberbyte/flamigo/events"
 	"github.com/amberbyte/flamigo/strategies"
 )
 
@@ -12,12 +12,12 @@ func Init(injector injection.DependencyManager) error {
 	registry := strategies.NewRegistry[strategies.Context]("app")
 
 	// Initialize the event bus
-	events := realtime.NewBus[realtime.Event]()
+	eventBus := events.NewBus[events.Event]()
 	if err := injector.AddInjectable(registry); err != nil {
 		return err
 	}
 
-	if err := injector.AddInjectable(events); err != nil {
+	if err := injector.AddInjectable(eventBus); err != nil {
 		return err
 	}
 	return nil
