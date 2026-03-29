@@ -62,11 +62,8 @@ The wizard scaffolds a project and lets you enable optional features like:
 
 Documentation and guides are available at:
 
-[flamigo.amberbyte.dev](https://flamigo.amberbyte.dev)
-
-## Release Guidance
-
-If you are publishing the current state, prefer a pre-1.0 release line. `v0.1.0` or `v0.1.0-beta.1` fits the current maturity better than `v1.0.0-beta.1`.
+[Documentation](https://flamigo.amberbyte.dev)
+[GoDoc](https://pkg.go.dev/github.com/amberbyte/flamigo)
 
 ## Contributing
 
