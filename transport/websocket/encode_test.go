@@ -38,6 +38,14 @@ func TestEncodeError(t *testing.T) {
 	assert.Contains(t, string(raw), `"topic":"error"`)
 	assert.Contains(t, string(raw), `"ack":"abc"`)
 	assert.Contains(t, string(raw), `"message":"Forbidden"`)
+	assert.Contains(t, string(raw), `"status":403`)
+}
+
+func TestEncodeWrappedPublicError(t *testing.T) {
+	raw, err := transportws.EncodeError(flamigo.WrapError("wrapped: %w", flamigo.NewError("nope", flamigo.Public("Forbidden"), flamigo.StatusCode(403))))
+	assert.NoError(t, err)
+	assert.Contains(t, string(raw), `"message":"Forbidden"`)
+	assert.Contains(t, string(raw), `"status":403`)
 }
 
 func TestEncodeErrorWithValidationFields(t *testing.T) {

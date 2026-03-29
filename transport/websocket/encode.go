@@ -86,10 +86,6 @@ func EncodeError(err error, opts ...EncodeOption) ([]byte, error) {
 		payload.FieldErrors = validationErr.FieldErrors()
 	}
 
-	if publicErr, ok := err.(flamigo.PublicError); ok {
-		payload.Message = publicErr.PublicError()
-	}
-
 	body := &responseBody{
 		Topic:   "error",
 		Payload: payload,
@@ -101,12 +97,21 @@ func EncodeError(err error, opts ...EncodeOption) ([]byte, error) {
 }
 
 func unwrapPublicError(err error) flamigo.PublicError {
-	unwrappedErr := errors.Unwrap(err)
-	if err, ok := unwrappedErr.(flamigo.PublicError); ok {
-		return err
+	var fallback flamigo.PublicError
+	for currentErr := err; currentErr != nil; currentErr = errors.Unwrap(currentErr) {
+		publicErr, ok := currentErr.(flamigo.PublicError)
+		if !ok {
+			continue
+		}
+		if publicErr.StatusCode() != 0 {
+			return publicErr
+		}
+		if fallback == nil {
+			fallback = publicErr
+		}
 	}
-	if unwrappedErr == nil {
-		return flamigo.WrapError("backend error: %w", err)
+	if fallback != nil {
+		return fallback
 	}
-	return unwrapPublicError(unwrappedErr)
+	return flamigo.WrapError("backend error: %w", err)
 }

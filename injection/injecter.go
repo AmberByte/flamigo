@@ -33,6 +33,7 @@ type Container interface {
 
 var (
 	errInvalidExecutable = errors.New("provided executable is not a function")
+	errNilInjectable     = errors.New("provided injectable is nil")
 )
 
 func errInvalidInjectable(t reflect.Type) error {
@@ -47,6 +48,19 @@ func errAlreadyRegistered(t reflect.Type) error {
 	return fmt.Errorf("injectable of type %s is already registered", t.String())
 }
 
+func isNilInjectable(v reflect.Value) bool {
+	if !v.IsValid() {
+		return true
+	}
+
+	switch v.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return v.IsNil()
+	default:
+		return false
+	}
+}
+
 var _ Registrar = (*Injector)(nil)
 var _ Invoker = (*Injector)(nil)
 var _ Container = (*Injector)(nil)
@@ -56,11 +70,16 @@ type Injector struct {
 }
 
 func (injector *Injector) Register(i any) error {
-	t := reflect.TypeOf(i)
+	v := reflect.ValueOf(i)
+	if isNilInjectable(v) {
+		return errNilInjectable
+	}
+
+	t := v.Type()
 	if injector.injectables[t].IsValid() {
 		return errAlreadyRegistered(t)
 	}
-	injector.injectables[t] = reflect.ValueOf(i)
+	injector.injectables[t] = v
 	logrus.Debugf("Added injectable: %s", t.String())
 	return nil
 }

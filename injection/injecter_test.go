@@ -84,6 +84,17 @@ func TestInjector_Register(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, reflect.ValueOf(a), actual)
 	})
+	t.Run("it rejects nil injectables", func(t *testing.T) {
+		injecter := NewInjector()
+		err := injecter.Register(nil)
+		assert.ErrorIs(t, err, errNilInjectable)
+	})
+	t.Run("it rejects typed nil injectables", func(t *testing.T) {
+		injecter := NewInjector()
+		var dep *componentA
+		err := injecter.Register(dep)
+		assert.ErrorIs(t, err, errNilInjectable)
+	})
 }
 
 func TestInjector_Invoke(t *testing.T) {
