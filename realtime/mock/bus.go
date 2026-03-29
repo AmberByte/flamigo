@@ -38,8 +38,9 @@ type MockBus_Expecter struct {
 	mock *mock.Mock
 }
 
-func (m *MockBus_Expecter) Subscribe(subscription any) *mock.Call {
-	return m.mock.On("Subscribe", subscription)
+func (m *MockBus_Expecter) Subscribe(subscription any, opts ...any) *mock.Call {
+	args := append([]any{subscription}, opts...)
+	return m.mock.On("Subscribe", args...)
 }
 
 func (m *MockBus_Expecter) Publish(event any, actor any) *mock.Call {
@@ -58,8 +59,12 @@ type MockBus[Evt realtime.Event] struct {
 	listeners map[realtime.Subscription]realtime.BusListener[realtime.Event]
 }
 
-func (m *MockBus[Evt]) Subscribe(subscription realtime.BusListener[realtime.Event]) realtime.Subscription {
-	args := m.Called(subscription)
+func (m *MockBus[Evt]) Subscribe(subscription realtime.BusListener[realtime.Event], opts ...realtime.SubscribeOpt) realtime.Subscription {
+	callArgs := []any{subscription}
+	for range opts {
+		callArgs = append(callArgs, mock.Anything)
+	}
+	args := m.Called(callArgs...)
 	subscriber := args.Get(0).(realtime.Subscription)
 	m.listeners[subscriber] = subscription
 	return subscriber

@@ -14,7 +14,6 @@ func createExampleListener(pubsub realtime.AppBus,) error {
 	})
 
 	// * SUBSCRIPTION
-	subscription := pubsub.Subscribe(listener)
-	subscription.SubscribeTopic(websocket.TopicUserDisconnected("*").String())
+	pubsub.Subscribe(listener, realtime.WithTopic(websocket.TopicUserDisconnected("*").String()))
 	return nil
 }

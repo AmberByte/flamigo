@@ -31,32 +31,32 @@ func (m *MockSubscriberExpected[T]) Cancel() *mock.Call {
 	return m.m.On("Cancel")
 }
 
-func (m *MockSubscriberExpected[T]) SubscribeTopic(topic string) *mock.Call {
-	return m.m.On("SubscribeTopic", topic)
+func (m *MockSubscriberExpected[T]) AddTopic(topic string) *mock.Call {
+	return m.m.On("AddTopic", topic)
+}
+
+func (m *MockSubscriberExpected[T]) RemoveTopic(topic string) *mock.Call {
+	return m.m.On("RemoveTopic", topic)
 }
 
 func (m *MockSubscriberExpected[T]) SubscribeAll() *mock.Call {
 	return m.m.On("SubscribeAll")
 }
 
-func (m *MockSubscriberExpected[T]) UnsubscribeTopic(topic string) *mock.Call {
-	return m.m.On("UnsubscribeTopic", topic)
-}
-
 func (m *MockSubscriber[T]) Cancel() {
 	m.MethodCalled("Cancel")
 }
 
+func (m *MockSubscriber[T]) AddTopic(topic string) {
+	m.MethodCalled("AddTopic", topic)
+}
+
+func (m *MockSubscriber[T]) RemoveTopic(topic string) {
+	m.MethodCalled("RemoveTopic", topic)
+}
+
 func (m *MockSubscriber[T]) SubscribeAll() {
 	m.MethodCalled("SubscribeAll")
-}
-
-func (m *MockSubscriber[T]) SubscribeTopic(topic string) {
-	m.MethodCalled("SubscribeTopic", topic)
-}
-
-func (m *MockSubscriber[T]) UnsubscribeTopic(topic string) {
-	m.MethodCalled("UnsubscribeTopic", topic)
 }
 
 func NewMockSubscriber[T realtime.Event]() *MockSubscriber[T] {

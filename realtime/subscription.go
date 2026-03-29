@@ -8,8 +8,8 @@ import (
 
 type Subscription interface {
 	Cancel()
-	SubscribeTopic(topic string)
-	UnsubscribeTopic(topic string)
+	AddTopic(topic string)
+	RemoveTopic(topic string)
 	SubscribeAll()
 }
 
@@ -37,8 +37,7 @@ func (s *subscription[T]) Cancel() {
 	})
 }
 
-// SubscribeTopic adds a topic to the subscription. If the subscription is already set to all topics, this will have no effect.
-func (s *subscription[T]) SubscribeTopic(topic string) {
+func (s *subscription[T]) AddTopic(topic string) {
 	s.topicsLock.Lock()
 	defer s.topicsLock.Unlock()
 
@@ -51,15 +50,11 @@ func (s *subscription[T]) SubscribeTopic(topic string) {
 	s.topics[topic] = true
 }
 
-// UnsubscribeTopic removes a topic from the subscription. If the subscription is already set to all topics, this will have no effect.
-func (s *subscription[T]) UnsubscribeTopic(topic string) {
+func (s *subscription[T]) RemoveTopic(topic string) {
 	s.topicsLock.Lock()
 	defer s.topicsLock.Unlock()
 
-	if s.all {
-		return
-	}
-	if s.topics == nil {
+	if s.all || s.topics == nil {
 		return
 	}
 	delete(s.topics, topic)
@@ -81,7 +76,6 @@ func (s *subscription[T]) matchesTopic(topic Topic) bool {
 	return false
 }
 
-// SubscribeAll sets the subscription to receive all messages. This will override any topics set before.
 func (s *subscription[T]) SubscribeAll() {
 	s.topicsLock.Lock()
 	defer s.topicsLock.Unlock()
@@ -98,10 +92,16 @@ func (s *subscription[T]) publish(msg published[T]) bool {
 	}
 }
 
-func newSubscription[T Event](channel chan published[T], onCancel func()) *subscription[T] {
+func newSubscription[T Event](channel chan published[T], onCancel func(), cfg subscribeConfig) *subscription[T] {
 	id, _ := gonanoid.New()
+	topics := make(map[string]bool, len(cfg.topics))
+	for _, topic := range cfg.topics {
+		topics[topic] = true
+	}
 	return &subscription[T]{
 		id:       id,
+		topics:   topics,
+		all:      cfg.all,
 		channel:  channel,
 		done:     make(chan struct{}),
 		onCancel: onCancel,

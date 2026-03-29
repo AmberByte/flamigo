@@ -12,7 +12,7 @@ import (
 // Bus is a generic interface for event buses.
 type Bus[T Event] interface {
 	// Subscribe adds a listener to the bus.
-	Subscribe(listener BusListener[T]) Subscription
+	Subscribe(listener BusListener[T], opts ...SubscribeOpt) Subscription
 	// Publish publishes the event to all subscribing subscribers without waiting for them to finish.
 	Publish(message T, actor ...flamigo.Actor)
 	// PublishSync publishes the event to all subscribing subscribers and waits for them to finish.
@@ -75,9 +75,9 @@ func (b *bus[T]) addListener(subscription *subscription[T]) {
 	b.listeners[subscription.id] = subscription
 }
 
-func (b *bus[T]) Subscribe(listener BusListener[T]) Subscription {
+func (b *bus[T]) Subscribe(listener BusListener[T], opts ...SubscribeOpt) Subscription {
 	channel := make(chan published[T], b.bufferSize)
-	subscription := newSubscription(channel, nil)
+	subscription := newSubscription(channel, nil, newSubscribeConfig(opts...))
 	subscription.onCancel = func() {
 		b.removeListener(subscription.id)
 	}

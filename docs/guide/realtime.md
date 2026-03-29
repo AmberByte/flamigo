@@ -54,8 +54,13 @@ You can receive on topics by creating a listener function and then subscribing t
 listener := func(ctx realtime.Context, evt realtime.Topci) {
   ...
 }
-subscription := bus.Subscribe(listener)
-subscription.SubscripeTopic("foo/bar")
+subscription := bus.Subscribe(listener, realtime.WithTopic("foo/bar"))
+```
+
+If you need to react to runtime state changes, you can still adjust an existing subscription:
+```go
+subscription.AddTopic("servers/123")
+subscription.RemoveTopic("servers/old")
 ```
 
 ## Wildcard subscriptions
@@ -65,8 +70,7 @@ Events support wildcards with `*` per path segment when you want to subscribe mo
 listener := func(ctx realtime.Context, evt realtime.Topci) {
   ...
 }
-subscription := bus.Subscribe(listener)
-subscription.SubscripeTopic("foo/*") // Subscribes to foo/<single-segment>
+subscription := bus.Subscribe(listener, realtime.WithTopic("foo/*")) // Subscribes to foo/<single-segment>
 ```
 For example this is useful when you want to subscribe to all user id topics and not a specific user id: `userId/*`
 

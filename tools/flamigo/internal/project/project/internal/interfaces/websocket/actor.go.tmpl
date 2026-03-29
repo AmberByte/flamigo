@@ -23,11 +23,11 @@ type Actor struct {
 }
 
 func (a *Actor) Subscribe(topic string) {
-	a.client.subscription.SubscribeTopic(topic)
+	a.client.subscription.AddTopic(topic)
 }
 
 func (a *Actor) Unsubscribe(topic string) {
-	a.client.subscription.UnsubscribeTopic(topic)
+	a.client.subscription.RemoveTopic(topic)
 }
 
 func (a *Actor) Type() string {

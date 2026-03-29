@@ -210,10 +210,7 @@ func (c *Client) writePump() {
 }
 
 func (c *Client) enableReceivingEvents() {
-	subscription := c.pubsub.Subscribe(c.handleReceivables)
-
-	// TODO: subscribe to the domain event topics this client should observe.
-	c.subscription = subscription
+	c.subscription = c.pubsub.Subscribe(c.handleReceivables)
 }
 
 func (c *Client) projectEvent(evt realtime.Event) (realtimeclient.Message, bool) {
