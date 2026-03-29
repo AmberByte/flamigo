@@ -5,7 +5,7 @@ import (
 	stdhttp "net/http"
 
 	{{if.HasFeature "auth"}}auth "{{.ProjectModulePath}}/internal/domains/auth/domain"{{end}}
-	{{if.HasFeature "transport_http"}}httptransport "{{.ProjectModulePath}}/internal/interfaces/http"{{end}}
+	{{if.HasFeature "transport_http"}}httptransport "{{.ProjectModulePath}}/internal/adapters/http"{{end}}
 	"github.com/amberbyte/flamigo/events"
 	"github.com/amberbyte/flamigo/strategies"
 )
