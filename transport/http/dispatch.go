@@ -97,6 +97,10 @@ func NewDispatcher(router strategies.AppRouter, opts ...DispatchOption) *Dispatc
 }
 
 func (d *Dispatcher) Handle(action string) stdhttp.HandlerFunc {
+	return d.handle(action, d.pathParamsExtractor, d.routePatternExtract)
+}
+
+func (d *Dispatcher) handle(action string, pathParamsExtractor PathParamsExtractor, routePatternExtractor RoutePatternExtractor) stdhttp.HandlerFunc {
 	return func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		actor, err := d.actorFactory(r, w)
 		if err != nil {
@@ -114,10 +118,10 @@ func (d *Dispatcher) Handle(action string) stdhttp.HandlerFunc {
 		strategyCtx := strategies.NewContext(appCtx, action, payload)
 		AttachRequestMetadata(strategyCtx.Request(), Metadata{
 			Method:     r.Method,
-			PathParams: extractPathParams(d.pathParamsExtractor, r),
+			PathParams: extractPathParams(pathParamsExtractor, r),
 			Query:      r.URL.Query(),
 			Headers:    r.Header.Clone(),
-			Route:      extractRoutePattern(d.routePatternExtract, r),
+			Route:      extractRoutePattern(routePatternExtractor, r),
 		})
 
 		result := d.router.Invoke(strategyCtx)

@@ -12,6 +12,7 @@ import (
 	"github.com/amberbyte/flamigo/events"
 	eventclient "github.com/amberbyte/flamigo/events/client"
 	"github.com/amberbyte/flamigo/strategies"
+	transportws "github.com/amberbyte/flamigo/transport/websocket"
 	{{if.HasFeature "auth"}}auth "{{.ProjectModulePath}}/internal/domains/auth/domain"{{end}}
 	"github.com/sirupsen/logrus"
 )
@@ -31,10 +32,8 @@ const (
 )
 
 var (
-	ErrNotAuthorized  = logger.NewError("unauthorized", logger.StatusCode(401))
-	errInvalidScope   = logger.NewError("the commands scope is invalid", logger.StatusCode(403))
-	errUnknownSession = logger.NewError("the session is unknown", logger.StatusCode(500))
-	errNotReady       = logger.NewError("the session is not ready yet", logger.StatusCode(500))
+	ErrNotAuthorized = flamigo.NewError("unauthorized", flamigo.Public("unauthorized"), flamigo.StatusCode(401))
+	errInvalidScope  = flamigo.NewError("the command scope is invalid", flamigo.Public("forbidden"), flamigo.StatusCode(403))
 )
 
 var upgrader = websocket.Upgrader{
@@ -57,7 +56,7 @@ type Client struct {
 	Authenticated    bool
 	{{if.HasFeature "auth"}}User             *auth.User{{end}}
 	subscription     events.Subscription
-	strategyRouter   strategies.AppRouter
+	dispatcher       *transportws.Dispatcher
 	pubsub           events.AppBus
 }
 
@@ -65,7 +64,6 @@ type Client struct {
 func (c *Client) registerUser(u *auth.User) {
 	c.User = u
 	c.Authenticated = true
-	c.lgr = c.lgr.WithFields(logger.ComposeFields(logger.User(u.ID)))
 	c.enableReceivingEvents()
 }
 {{end}}
@@ -83,16 +81,39 @@ func (c *Client) unregister() {
 }
 
 func (c *Client) SendMessage(topic string, message eventclient.MessageMarshaller) {
-	c.sendResponse(NewSuccessResponse(topic, message))
+	rawMessage, err := transportws.EncodeSuccess(topic, message)
+	c.sendRaw(rawMessage, err)
 }
 
-func (c *Client) sendResponse(response Response) {
-	rawMessage, err := response.MarshalJSON()
+func (c *Client) sendRaw(rawMessage []byte, err error) {
 	if err != nil {
 		logrus.Errorf("Could not marshal response: %v", err)
 		return
 	}
 	c.sendData <- rawMessage
+}
+
+func (c *Client) enqueueMessage(raw []byte) error {
+	c.sendData <- raw
+	return nil
+}
+
+func (c *Client) decodeCommand(raw []byte) (*transportws.Command, error) {
+	command, err := transportws.DecodeCommand(raw)
+	if err != nil {
+		return nil, err
+	}
+	if !strings.HasPrefix(command.Action(), "app::") {
+		return nil, errInvalidScope
+	}
+	return command, nil
+}
+
+func (c *Client) createActor(ctx context.Context, cmd *transportws.Command) (flamigo.Actor, error) {
+	{{if.HasFeature "auth"}}if !c.Authenticated && cmd.Action() != "app::websocket:auth" {
+		return nil, ErrNotAuthorized
+	}{{end}}
+	return newWebsocketActor(c), nil
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -118,44 +139,8 @@ func (c *Client) readPump() {
 			break
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-		// logrus.Println("Received message: ", string(message))
-		command, err := newCommand(message)
-		if err != nil {
-			logrus.Printf("Could not read command error: %v", err)
-			continue
-		}
-		err = command.Validate()
-		if err != nil {
-			logrus.Printf("Could not validate message: %v", err)
-			c.sendResponse(NewErrorResponse(err, FromCommand(command)))
-			continue
-		}
-		{{if.HasFeature "auth"}}
-		if !c.Authenticated && command.Command() != "app::websocket:auth" {
-			logrus.Printf("Client not authenticated, ignoring message")
-			c.sendResponse(NewErrorResponse(ErrNotAuthorized, FromCommand(command)))
-			continue
-		}
-		{{end}}
-
-		appCtx := flamigo.NewCoreContext(context.TODO(), newWebsocketActor(c))
-		strategyCtx := strategies.NewContext(appCtx, command.Command(), command.Payload())
-		logrus.Debugf("[CONN] Using strategy %s\n", command.Command())
-		var result strategies.Result
-		if strings.HasPrefix(command.Command(), "app::") {
-			result = c.strategyRouter.Invoke(strategyCtx)
-		} else {
-			logrus.Infof("Strategy Rejected: invalid scope")
-			c.sendResponse(NewErrorResponse(errInvalidScope, FromCommand(command)))
-			continue
-		}
-		if result.IsError() {
-			logrus.Infof("Strategy Rejected with error: %s", result.Err())
-			c.sendResponse(NewErrorResponse(result.Err(), FromCommand(command)))
-			continue
-		}
-		if result.IsOk() {
-			c.sendResponse(NewSuccessResponse(command.Command(), result.Payload(), FromCommand(command)))
+		if err := c.dispatcher.HandleMessage(context.Background(), message, c.enqueueMessage); err != nil {
+			logrus.Printf("Could not handle message: %v", err)
 			continue
 		}
 	}
@@ -224,7 +209,8 @@ func (c *Client) handleReceivables(ctx events.Context, evt events.Event) {
 	if !ok {
 		return
 	}
-	c.sendResponse(NewSuccessResponse(msg.Topic(), msg.Payload()))
+	rawMessage, err := transportws.EncodeSuccess(msg.Topic(), msg.Payload())
+	c.sendRaw(rawMessage, err)
 }
 
 // serveWs handles websocket requests from the peer.
@@ -237,8 +223,12 @@ func serveWs(w http.ResponseWriter, r *http.Request, pubsub events.AppBus, route
 		conn:             conn,
 		sendData:         make(chan []byte, 256),
 		pubsub:           pubsub,
-		strategyRouter:   router,
 	}
+	client.dispatcher = transportws.NewDispatcher(
+		router,
+		transportws.WithCommandDecoder(client.decodeCommand),
+		transportws.WithActorFactory(client.createActor),
+	)
 
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.

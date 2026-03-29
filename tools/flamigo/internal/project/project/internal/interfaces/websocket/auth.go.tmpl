@@ -14,23 +14,19 @@ type authPayload struct {
 
 func websocketAuthStrategy(authService auth.Service, strategyRegistry strategies.AppRegistry, pubsub events.AppBus) error {
 	strategy := func(ctx strategies.Context) {
-		lgr := ctx.Logger()
 		actor, err := flamigo.RequireActorWithClaims[*Actor](ctx, IsWebsocket())
 		if err != nil {
-			lgr.Error("Strategy can only be called with websocket actor")
 			ctx.Response().SetError(ErrInvalidActor)
 			return
 		}
 
 		payload := authPayload{}
-		if err := ctx.UnmarshalAndValidatePayload(&payload); err != nil {
-			lgr.Warnf("Could not unmarshal payload 1: %v", err)
+		if err := ctx.Request().BindAndValidate(&payload); err != nil {
 			ctx.Response().SetError(err)
 			return
 		}
 		currentUser, err := authService.VerifyToken(ctx, payload.Token)
 		if err != nil {
-			lgr.Warnf("Could not find user: %v", err)
 			ctx.Response().SetError(err)
 			return
 		}

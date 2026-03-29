@@ -1,1 +1,1 @@
-{{if.HasFeature "realtime"}}true{{end}}
+{{if.HasFeature "transport_websocket"}}true{{end}}

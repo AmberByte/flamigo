@@ -20,7 +20,6 @@ var _ flamigo.Actor = (*Actor)(nil)
 
 type Actor struct {
 	client *Client
-	ackId  string
 }
 
 func (a *Actor) Subscribe(topic events.Topic) {
@@ -41,22 +40,10 @@ func (a *Actor) User() *auth.User {
 }
 {{end}}
 
-type opt func(*Actor)
-
-func WithAckId(ackId string) opt {
-	return func(a *Actor) {
-		a.ackId = ackId
-	}
-}
-
-func newWebsocketActor(client *Client, opts ...opt) *Actor {
-	actor := &Actor{
+func newWebsocketActor(client *Client) *Actor {
+	return &Actor{
 		client: client,
 	}
-	for _, opt := range opts {
-		opt(actor)
-	}
-	return actor
 }
 
 func IsWebsocket() flamigo.ActorClaimValidator {
@@ -70,7 +57,7 @@ func IsWebsocket() flamigo.ActorClaimValidator {
 
 func IsNotWebsocket() flamigo.ActorClaimValidator {
 	return func(ctx context.Context, actor flamigo.Actor) error {
-		if actor.Type() != ActorType {
+		if actor.Type() == ActorType {
 			return ErrInvalidActor
 		}
 		return nil

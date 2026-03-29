@@ -70,6 +70,16 @@ func createStrategyGetMessages(
 
 This keeps HTTP method/path mapping close to the strategy without moving HTTP concerns into the `strategies` package itself.
 
+If you use the standard library router, `transport/http` also includes a reusable registrar that binds those routes to the dispatcher:
+
+```go
+mux := http.NewServeMux()
+dispatcher := transporthttp.NewDispatcher(apiRouter)
+routes := transporthttp.NewServeMuxRegistrar(mux, dispatcher)
+```
+
+Then the same `routes.Handle("GET", "/messages/{id}", "app::messages:get")` registrations can live next to strategy setup, while request method, path params, query, headers, and route pattern are attached to the strategy request automatically.
+
 ## Limiting Based on the Actor
 You can also limit based on the actor thas coming in. this can be extended with your own validators to your needs:
 ```go

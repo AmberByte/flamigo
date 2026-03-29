@@ -6,10 +6,13 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/amberbyte/flamigo/injection"
+	"github.com/sirupsen/logrus"
 	core_infra "{{.ProjectModulePath}}/internal/domains/core/infrastructure"
 	"{{.ProjectModulePath}}/internal/api"
 	{{if .HasFeature "auth"}}auth_infra "{{.ProjectModulePath}}/internal/domains/auth/infrastructure"{{end}}
-	{{if .HasFeature "realtime"}}websocket "{{.ProjectModulePath}}/internal/interfaces/websocket"{{end}}
+	{{if .HasFeature "transport_http"}}httptransport "{{.ProjectModulePath}}/internal/interfaces/http"{{end}}
+	{{if .HasFeature "transport_websocket"}}websocket "{{.ProjectModulePath}}/internal/interfaces/websocket"{{end}}
 )
 
 var initializers = []any{
@@ -20,8 +23,10 @@ var initializers = []any{
 	// ----------- Domain Apps
 	
 	//------------ Initialize APIs
+	{{if .HasFeature "transport_http"}}httptransport.Init,{{end}}
 	api.Init,
-	{{if .HasFeature "realtime"}}websocket.Init,{{end}}
+	{{if .HasFeature "transport_websocket"}}websocket.Init,{{end}}
+	{{if .HasFeature "transport_http"}}httptransport.Start,{{end}}
 }
 
 func wrapError(t reflect.Type, err error) error {
@@ -54,18 +59,18 @@ func getFunctionPackageName(f interface{}) string {
 
 func main() {
 	logrus.SetLevel(logrus.DebugLevel)
-	lgr.Info("Starting {{.ProjectName}} backend")
+	logrus.Infof("Starting {{.ProjectName}} backend")
 	injector := injection.NewInjector()
 
 	for _, init := range initializers {
 		err := validInitializer(init)
 		if err != nil {
-			lgr.Fatalf("verifying initializer (#%s): %s", getFunctionPackageName(init), err)
+			logrus.Fatalf("verifying initializer (#%s): %s", getFunctionPackageName(init), err)
 		}
 		err = injector.Invoke(init)
 		if err != nil {
 
-			lgr.Fatalf("initializing (%s): %s", getFunctionPackageName(init), err)
+			logrus.Fatalf("initializing (%s): %s", getFunctionPackageName(init), err)
 		}
 	}
 }

@@ -1,34 +1,31 @@
 package websocket
 
 import (
-	"net/http"
 	"fmt"
+	stdhttp "net/http"
 
-	"github.com/gorilla/mux"
 	{{if.HasFeature "auth"}}auth "{{.ProjectModulePath}}/internal/domains/auth/domain"{{end}}
+	{{if.HasFeature "transport_http"}}httptransport "{{.ProjectModulePath}}/internal/interfaces/http"{{end}}
 	"github.com/amberbyte/flamigo/events"
 	"github.com/amberbyte/flamigo/strategies"
 )
 
-
-func Init(auth auth.Service, pubsub events.AppBus, apiRegistry strategies.AppRegistry, apiRouter strategies.AppRouter) error {
-
-
+func Init({{if.HasFeature "auth"}}auth auth.Service, {{end}}{{if.HasFeature "transport_http"}}server *httptransport.Server, {{end}}pubsub events.AppBus, {{if.HasFeature "auth"}}apiRegistry strategies.AppRegistry, {{end}}apiRouter strategies.AppRouter) error {
 	{{if.HasFeature "auth"}}if err := websocketAuthStrategy(auth, apiRegistry, pubsub); err != nil { return err }{{end}}
 
+	handler := func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		serveWs(w, r, pubsub, apiRouter)
+	}
+
+	{{if.HasFeature "transport_http"}}
+	server.HandleFunc("/ws", handler)
+	return nil
+	{{else}}
 	addr := ":8080"
 	fmt.Printf("Starting websocket server at %s", addr)
-	// go hub.run()
-	r := mux.NewRouter()
-	// r.Methods("OPTIONS").HandlerFunc(
-	// 	func(w http.ResponseWriter, r *http.Request) {
-	// 		myHttpLib.OptionsForBrowserPreflight(w, r)
-	// 	})
-	r.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("Received /ws request")
-		serveWs(w, r, pubsub, apiRouter)
-	})
-	err := http.ListenAndServe(addr, r)
+	mux := stdhttp.NewServeMux()
+	mux.HandleFunc("/ws", handler)
+	err := stdhttp.ListenAndServe(addr, mux)
 	if err != nil {
 		fmt.Println("ListenAndServe: ", err)
 		panic(err)
@@ -36,4 +33,5 @@ func Init(auth auth.Service, pubsub events.AppBus, apiRegistry strategies.AppReg
 		fmt.Println("Websocket server started successfully")
 	}
 	return nil
+	{{end}}
 }

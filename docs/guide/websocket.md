@@ -97,6 +97,8 @@ By default, client setup is minimal — you are expected to **manually subscribe
 
 ## Events
 
+The generated WebSocket scaffold keeps auth, connection lifecycle, and event projection in your app code, but delegates reusable transport mechanics like command decoding, strategy dispatch, and response encoding to `transport/websocket`.
+
 The WebSocket interface emits lifecycle events, including:
 
 - **`EventDisconnected`** – Fired when a client disconnects from the server.  
@@ -124,17 +126,17 @@ Communication between frontend and backend happens through structured WebSocket 
 
 ### Receiving Responses
 
-To receive a response to a specific request, include an `ackId` in the message:
+To receive a response to a specific request, include an `ack` key in the message:
 
 ```json
 {
   "topic": "app::strategy",
   "payload": {},
-  "ackId": "12345"
+  "ack": "12345"
 }
 ```
 
-The response will be returned with the same `ackId`:
+The response will be returned with the same `ack` value:
 
 ```json
 {
@@ -142,7 +144,7 @@ The response will be returned with the same `ackId`:
   "payload": {
     "foo": "bar"
   },
-  "ackId": "12345"
+  "ack": "12345"
 }
 ```
 
@@ -162,7 +164,7 @@ If a strategy fails or an error occurs, the server will respond with a message u
     "status": "status code",
     "trace": "if provided, a trace"
   },
-  "ackId": "12345"
+  "ack": "12345"
 }
 ```
 
@@ -171,6 +173,6 @@ This message includes:
 - A descriptive error `message`
 - An optional `status` code
 - A `trace` (for debugging, if available)
-- The `ackId` to match the failed request
+- The `ack` value to match the failed request
 
 This structure allows the frontend to gracefully handle and display backend errors.

@@ -7,8 +7,8 @@ import (
 )
 
 func TestActor(t *testing.T) {
-	t.Run("With Acknowlegde ID", func(t *testing.T) {
-		actor := newWebsocketActor(nil, WithAckId("123"))
-		assert.Equal(t, actor.ackId, "123")
+	t.Run("Type", func(t *testing.T) {
+		actor := newWebsocketActor(nil)
+		assert.Equal(t, ActorType, actor.Type())
 	})
 }
