@@ -4,12 +4,12 @@ The API can be structured around your domains or follow any other approach, ther
 
 ## Defining strategies in api layer
 Defining a strategy in api layer can be done in a special dependency injection wrapper.
-Its convenient to do everything in there, but for larger and more complex stragtegies it may be reasonable to split it up.
+It is convenient to do everything there, but for larger and more complex strategies it may be better to split it up.
 
 ### 1. Define strategy
 ```go
-func createStrategyGetMessages(strategy strategy.Registry, msgDomain messages.Domain) {// [!code ++:5]
-  strategy := func(ctx strategy.Context) {
+func createStrategyGetMessages(registry strategies.Registry[strategies.Context], msgDomain messages.Domain) {// [!code ++:5]
+  handler := func(ctx strategy.Context) {
     // Do some logic here
   }
 }
@@ -17,12 +17,12 @@ func createStrategyGetMessages(strategy strategy.Registry, msgDomain messages.Do
 
 ### 2. Register your strategy in the registry
 ```go
-func createStrategyGetMessages(strategy strategy.Registry, msgDomain messages.Domain) {
-  strategy := func(ctx strategy.Context) {
+func createStrategyGetMessages(registry strategies.Registry[strategies.Context], msgDomain messages.Domain) error {
+  handler := func(ctx strategy.Context) {
     // Do some logic here
   }
 
-  strategy.Register("app::messages:get", strategy)// [!code ++]
+  return registry.Register("messages:get", handler)// [!code ++]
 }
 ```
 
@@ -39,18 +39,52 @@ var apiModules = []any{
   createStrategyGetMessages,// [!code ++]
 }
 
-func Init(inj injection.DependencyManager) error {
-	return inj.ExecuteList(apiModules)
+func Init(inj injection.Container) error {
+	return inj.InvokeAll(apiModules)
 }
 
 ```
 Now your api is registered
 
-## Limiting Based on the Actor
-You can also limit based on the actor thas coming in. this can be extended with your own validators to your needs:
+### Optional: Register HTTP Routes Next To Strategies
+
+If a strategy is exposed over HTTP, inject an HTTP route registrar from your HTTP adapter layer and bind the route next to the strategy registration:
+
 ```go
-func createStrategyGetMessages(strategy strategy.Registry, msgDomain messages.Domain) {
-  strategy := func(ctx strategy.Context) {// [!code focus:9]
+func createStrategyGetMessages(
+  registry strategies.Registry[strategies.Context],
+  routes http.Registrar,
+  msgDomain messages.Domain,
+) error {
+  handler := func(ctx strategies.Context) {
+    // Do some logic here
+  }
+
+  if err := registry.Register("messages:get", handler); err != nil {
+    return err
+  }
+
+  return routes.Handle("GET", "/messages/{id}", "app::messages:get")
+}
+```
+
+This keeps HTTP method/path mapping close to the strategy without moving HTTP concerns into the `strategies` package itself.
+
+If you use the standard library router, `transport/http` also includes a reusable registrar that binds those routes to the dispatcher:
+
+```go
+mux := http.NewServeMux()
+dispatcher := transporthttp.NewDispatcher(apiRouter)
+routes := transporthttp.NewServeMuxRegistrar(mux, dispatcher)
+```
+
+Then the same `routes.Handle("GET", "/messages/{id}", "app::messages:get")` registrations can live next to strategy setup, while request method, path params, query, headers, and route pattern are attached to the strategy request automatically.
+
+## Limiting Based on the Actor
+You can also limit behavior based on the incoming actor. This can be extended with your own claim validators as needed:
+```go
+func createStrategyGetMessages(registry strategies.Registry[strategies.Context], msgDomain messages.Domain) error {
+  handler := func(ctx strategy.Context) {// [!code focus:9]
     err := flamigo.RequireActorWithClaims[flamigo.Actor](ctx, flamigo.IsServer())// [!code ++:5]
     if err != nil {
       ctx.Response.SetError(err)
@@ -59,5 +93,6 @@ func createStrategyGetMessages(strategy strategy.Registry, msgDomain messages.Do
     // Do some logic here
   }
 
-  strategy.Register("app::messages:get", strategy)
+  return registry.Register("messages:get", handler)
 }
+```

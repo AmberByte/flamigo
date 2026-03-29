@@ -1,11 +1,11 @@
 # WebSocket (Realtime)
 
-Flamigo's realtime interface is built on **WebSockets**, allowing you to send or push updates from your backend to connected frontend clients — instantly and efficiently.
+Flamigo's realtime WebSocket adapter is built on **WebSockets**, allowing you to send or push updates from your backend to connected frontend clients instantly and efficiently.
 
 It integrates directly with the **Realtime Event Bus**, enabling seamless reaction to domain events and bidirectional communication with frontend applications.
 
 ::: warning
-The config module refers to the initial setup configuration for enabling WebSocket support. It can only be enabled when initializing a new project because it requires specific scaffolding to be generated.
+WebSocket support can only be enabled when initializing a new project because it requires specific scaffolding to be generated.
 :::
 
 ---
@@ -50,7 +50,7 @@ Follow these steps to enable and use WebSocket communication in your Flamigo pro
 
 In line with Flamigo’s actor-based architecture, each WebSocket connection is treated as an **actor**. This allows strategies and domain logic to understand and respond to *who* initiated a given action via WebSocket.
 
-The WebSocket interface provides its own actor type to represent the client.
+The WebSocket adapter provides its own actor type to represent the client.
 
 :::info  
 If the **auth** plugin is also enabled, the WebSocket actor will automatically implement the `UserActor` interface — giving you access to user-specific logic out of the box.  
@@ -71,7 +71,7 @@ These can be used in strategies or other actor-aware logic to adapt behavior to 
 
 ## Authentication
 
-If the authentication plugin is enabled, the WebSocket interface registers a dedicated **authentication strategy**:
+If the authentication plugin is enabled, the WebSocket adapter registers a dedicated **authentication strategy**:
 
 ```txt
 app::websocket:auth
@@ -97,7 +97,9 @@ By default, client setup is minimal — you are expected to **manually subscribe
 
 ## Events
 
-The WebSocket interface emits lifecycle events, including:
+The generated WebSocket scaffold under `internal/adapters/websocket` keeps auth, connection lifecycle, and event projection in your app code, but delegates reusable transport mechanics like command decoding, strategy dispatch, and response encoding to `transport/websocket`.
+
+The WebSocket adapter emits lifecycle events, including:
 
 - **`EventDisconnected`** – Fired when a client disconnects from the server.  
   You can use this to clean up state, revoke sessions, or notify others.
@@ -124,17 +126,17 @@ Communication between frontend and backend happens through structured WebSocket 
 
 ### Receiving Responses
 
-To receive a response to a specific request, include an `ackId` in the message:
+To receive a response to a specific request, include an `ack` key in the message:
 
 ```json
 {
   "topic": "app::strategy",
   "payload": {},
-  "ackId": "12345"
+  "ack": "12345"
 }
 ```
 
-The response will be returned with the same `ackId`:
+The response will be returned with the same `ack` value:
 
 ```json
 {
@@ -142,7 +144,7 @@ The response will be returned with the same `ackId`:
   "payload": {
     "foo": "bar"
   },
-  "ackId": "12345"
+  "ack": "12345"
 }
 ```
 
@@ -159,18 +161,18 @@ If a strategy fails or an error occurs, the server will respond with a message u
   "topic": "error",
   "payload": {
     "message": "some error message",
-    "status": "status code",
+    "type": "server_error",
     "trace": "if provided, a trace"
   },
-  "ackId": "12345"
+  "ack": "12345"
 }
 ```
 
 This message includes:
 
 - A descriptive error `message`
-- An optional `status` code
+- An optional generic error `type`, such as `bad_request`, `not_found`, or `server_error`
 - A `trace` (for debugging, if available)
-- The `ackId` to match the failed request
+- The `ack` value to match the failed request
 
 This structure allows the frontend to gracefully handle and display backend errors.

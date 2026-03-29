@@ -1,0 +1,55 @@
+package http
+
+import (
+	"fmt"
+	stdhttp "net/http"
+
+	"github.com/amberbyte/flamigo/injection"
+	"github.com/amberbyte/flamigo/strategies"
+	transporthttp "github.com/amberbyte/flamigo/transport/http"
+)
+
+var _ transporthttp.Registrar = (*Server)(nil)
+
+type Server struct {
+	mux        *stdhttp.ServeMux
+	dispatcher *transporthttp.Dispatcher
+	registrar  transporthttp.Registrar
+}
+
+func NewServer(apiRouter strategies.AppRouter) *Server {
+	mux := stdhttp.NewServeMux()
+	dispatcher := transporthttp.NewDispatcher(
+		apiRouter,
+		transporthttp.WithActorFactory(newActor),
+	)
+
+	return &Server{
+		mux:        mux,
+		dispatcher: dispatcher,
+		registrar:  transporthttp.NewServeMuxRegistrar(mux, dispatcher),
+	}
+}
+
+func (s *Server) Handle(method string, path string, action string) error {
+	return s.registrar.Handle(method, path, action)
+}
+
+func (s *Server) HandleFunc(pattern string, handler stdhttp.HandlerFunc) {
+	s.mux.HandleFunc(pattern, handler)
+}
+
+func (s *Server) Start(addr string) error {
+	return stdhttp.ListenAndServe(addr, s.mux)
+}
+
+func Init(inj injection.Container, apiRouter strategies.AppRouter) error {
+	server := NewServer(apiRouter)
+	return inj.Register(server)
+}
+
+func Start(server *Server) error {
+	addr := ":8080"
+	fmt.Printf("Starting http server at %s", addr)
+	return server.Start(addr)
+}

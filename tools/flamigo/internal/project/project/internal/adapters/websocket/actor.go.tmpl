@@ -1,0 +1,65 @@
+package websocket
+
+import (
+	"context"
+	"errors"
+
+	flamigo "github.com/amberbyte/flamigo/core"
+	"github.com/amberbyte/flamigo/events"
+	{{if.HasFeature "auth"}}auth "{{.ProjectModulePath}}/internal/domains/auth/domain"{{end}}
+)
+
+const ActorType string = "websocket"
+
+var (
+	ErrInvalidActor = errors.New("actor is not a websocket actor")
+)
+
+var _ flamigo.Actor = (*Actor)(nil)
+{{if.HasFeature "auth"}}var _ auth.UserActor = (*Actor)(nil){{end}}
+
+type Actor struct {
+	client *Client
+}
+
+func (a *Actor) Subscribe(topic events.Topic) {
+	a.client.subscription.AddTopic(topic)
+}
+
+func (a *Actor) Unsubscribe(topic events.Topic) {
+	a.client.subscription.RemoveTopic(topic)
+}
+
+func (a *Actor) Type() string {
+	return "websocket"
+}
+
+{{if.HasFeature "auth"}}
+func (a *Actor) User() *auth.User {
+	return a.client.User
+}
+{{end}}
+
+func newWebsocketActor(client *Client) *Actor {
+	return &Actor{
+		client: client,
+	}
+}
+
+func IsWebsocket() flamigo.ActorClaimValidator {
+	return func(ctx context.Context, actor flamigo.Actor) error {
+		if actor.Type() != ActorType {
+			return ErrInvalidActor
+		}
+		return nil
+	}
+}
+
+func IsNotWebsocket() flamigo.ActorClaimValidator {
+	return func(ctx context.Context, actor flamigo.Actor) error {
+		if actor.Type() == ActorType {
+			return ErrInvalidActor
+		}
+		return nil
+	}
+}

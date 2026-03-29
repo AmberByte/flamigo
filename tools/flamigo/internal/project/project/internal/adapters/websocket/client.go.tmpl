@@ -1,0 +1,237 @@
+package websocket
+
+import (
+	"bytes"
+	"context"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/gorilla/websocket"
+	flamigo "github.com/amberbyte/flamigo/core"
+	"github.com/amberbyte/flamigo/events"
+	eventclient "github.com/amberbyte/flamigo/events/client"
+	"github.com/amberbyte/flamigo/strategies"
+	transportws "github.com/amberbyte/flamigo/transport/websocket"
+	{{if.HasFeature "auth"}}auth "{{.ProjectModulePath}}/internal/domains/auth/domain"{{end}}
+	"github.com/sirupsen/logrus"
+)
+
+const (
+	// Time allowed to write a message to the peer.
+	WRITE_MAX_WAIT = 10 * time.Second
+
+	// Time allowed to read the next pong message from the peer.
+	PONG_MAX_WAIT = 60 * time.Second
+
+	// Send pings to peer with this period. Must be less than pongWait.
+	PING_PERIOD = (PONG_MAX_WAIT * 9) / 10
+
+	// Maximum message size allowed from peer.
+	MAX_MESSAGE_SIZE = 2048
+)
+
+var (
+	ErrNotAuthorized = flamigo.NewError("unauthorized", flamigo.Public("unauthorized"), flamigo.Kind(flamigo.ErrorTypeUnauthorized))
+	errInvalidScope  = flamigo.NewError("the command scope is invalid", flamigo.Public("forbidden"), flamigo.Kind(flamigo.ErrorTypeForbidden))
+)
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		// TODO: this should not allow everything in a production case
+		return true
+	},
+}
+
+var (
+	newline = []byte{'\n'}
+	space   = []byte{' '}
+)
+
+type Client struct {
+	conn             *websocket.Conn
+	sendData         chan []byte
+	Authenticated    bool
+	{{if.HasFeature "auth"}}User             *auth.User{{end}}
+	subscription     events.Subscription
+	dispatcher       *transportws.Dispatcher
+	pubsub           events.AppBus
+}
+
+{{if.HasFeature "auth"}}
+func (c *Client) registerUser(u *auth.User) {
+	c.User = u
+	c.Authenticated = true
+	c.enableReceivingEvents()
+}
+{{end}}
+
+func (c *Client) unregister() {
+	if c.subscription != nil {
+		c.subscription.Cancel()
+	}
+	{{if.HasFeature "auth"}}
+	if c.User != nil {
+		evt := NewEventDisconnected(*c.User)
+		c.pubsub.Publish(evt)
+	}
+	{{end}}
+}
+
+func (c *Client) SendMessage(topic string, message eventclient.MessageMarshaller) {
+	rawMessage, err := transportws.EncodeSuccess(topic, message)
+	c.sendRaw(rawMessage, err)
+}
+
+func (c *Client) sendRaw(rawMessage []byte, err error) {
+	if err != nil {
+		logrus.Errorf("Could not marshal response: %v", err)
+		return
+	}
+	c.sendData <- rawMessage
+}
+
+func (c *Client) enqueueMessage(raw []byte) error {
+	c.sendData <- raw
+	return nil
+}
+
+func (c *Client) decodeCommand(raw []byte) (*transportws.Command, error) {
+	command, err := transportws.DecodeCommand(raw)
+	if err != nil {
+		return nil, err
+	}
+	if !strings.HasPrefix(command.Action(), "app::") {
+		return nil, errInvalidScope
+	}
+	return command, nil
+}
+
+func (c *Client) createActor(ctx context.Context, cmd *transportws.Command) (flamigo.Actor, error) {
+	{{if.HasFeature "auth"}}if !c.Authenticated && cmd.Action() != "app::websocket:auth" {
+		return nil, ErrNotAuthorized
+	}{{end}}
+	return newWebsocketActor(c), nil
+}
+
+// readPump pumps messages from the websocket connection to the hub.
+//
+// The application runs readPump in a per-connection goroutine. The application
+// ensures that there is at most one reader on a connection by executing all
+// reads from this goroutine.
+func (c *Client) readPump() {
+	defer func() {
+		// c.hub.unregister <- c
+		c.conn.Close()
+	}()
+	c.conn.SetReadLimit(MAX_MESSAGE_SIZE)
+	c.conn.SetReadDeadline(time.Now().Add(PONG_MAX_WAIT))
+	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(PONG_MAX_WAIT)); return nil })
+	for {
+		_, message, err := c.conn.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				logrus.Printf("error: %v", err)
+			}
+			logrus.Println("Connection closed with err", err)
+			break
+		}
+		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
+		if err := c.dispatcher.HandleMessage(context.Background(), message, c.enqueueMessage); err != nil {
+			logrus.Printf("Could not handle message: %v", err)
+			continue
+		}
+	}
+
+	c.unregister()
+}
+
+// writePump pumps messages from the hub to the websocket connection.
+//
+// A goroutine running writePump is started for each connection. The
+// application ensures that there is at most one writer to a connection by
+// executing all writes from this goroutine.
+func (c *Client) writePump() {
+	ticker := time.NewTicker(PING_PERIOD)
+	defer func() {
+		ticker.Stop()
+		c.conn.Close()
+	}()
+	for {
+		select {
+		case message, ok := <-c.sendData:
+			c.conn.SetWriteDeadline(time.Now().Add(WRITE_MAX_WAIT))
+			if !ok {
+				// The hub closed the channel.
+				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+
+			w, err := c.conn.NextWriter(websocket.TextMessage)
+			if err != nil {
+				return
+			}
+			w.Write(message)
+
+			// // Add queued chat messages to the current websocket message.
+			// n := len(c.send)
+			// for i := 0; i < n; i++ {
+			// 	w.Write(newline)
+			// 	w.Write(<-c.send)
+			// }
+
+			if err := w.Close(); err != nil {
+				return
+			}
+		case <-ticker.C:
+			c.conn.SetWriteDeadline(time.Now().Add(WRITE_MAX_WAIT))
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
+		}
+	}
+}
+
+func (c *Client) enableReceivingEvents() {
+	c.subscription = c.pubsub.Subscribe(c.handleReceivables)
+}
+
+func (c *Client) projectEvent(evt events.Event) (eventclient.Message, bool) {
+	// TODO: translate selected domain events into outbound websocket messages here.
+	// Keep this mapping in the interface layer so your domain events stay transport-agnostic.
+	return nil, false
+}
+
+func (c *Client) handleReceivables(ctx events.Context, evt events.Event) {
+	msg, ok := c.projectEvent(evt)
+	if !ok {
+		return
+	}
+	rawMessage, err := transportws.EncodeSuccess(msg.Topic(), msg.Payload())
+	c.sendRaw(rawMessage, err)
+}
+
+// serveWs handles websocket requests from the peer.
+func serveWs(w http.ResponseWriter, r *http.Request, pubsub events.AppBus, router strategies.AppRouter) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
+	client := &Client{
+		conn:             conn,
+		sendData:         make(chan []byte, 256),
+		pubsub:           pubsub,
+	}
+	client.dispatcher = transportws.NewDispatcher(
+		router,
+		transportws.WithCommandDecoder(client.decodeCommand),
+		transportws.WithActorFactory(client.createActor),
+	)
+
+	// Allow collection of memory referenced by the caller by doing all work in
+	// new goroutines.
+	go client.writePump()
+	go client.readPump()
+}

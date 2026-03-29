@@ -17,8 +17,8 @@ import (
 
 var features = []huh.Option[string]{
 	huh.NewOption("Authentication (Domain)", "auth"),
-	huh.NewOption("Realtime - Websocket (Interface)", "realtime"),
-	huh.NewOption("Configuration (Core)", "config"),
+	huh.NewOption("HTTP Transport", "transport_http"),
+	huh.NewOption("Websocket Transport", "transport_websocket"),
 }
 
 type FormData struct {

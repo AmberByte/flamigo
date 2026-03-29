@@ -1,1 +1,0 @@
-{{if.HasFeature "realtime"}}true{{end}}

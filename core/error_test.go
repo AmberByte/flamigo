@@ -7,25 +7,43 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestError_StatusCode(t *testing.T) {
-	t.Run("Returns status code", func(t *testing.T) {
+func TestError_ErrorType(t *testing.T) {
+	t.Run("Returns default error type", func(t *testing.T) {
 		err := flamigo.NewError("some error")
-		assert.Equal(t, 500, err.StatusCode())
+		assert.Equal(t, flamigo.ErrorTypeServerError, err.Type())
 	})
-	t.Run("Can overwrite status code", func(t *testing.T) {
-		err := flamigo.NewError("some error", flamigo.StatusCode(400))
-		assert.Equal(t, 400, err.StatusCode())
+	t.Run("Can overwrite error type", func(t *testing.T) {
+		err := flamigo.NewError("some error", flamigo.Kind(flamigo.ErrorTypeBadRequest))
+		assert.Equal(t, flamigo.ErrorTypeBadRequest, err.Type())
 	})
 }
 
 func TestError_PublicError(t *testing.T) {
 	t.Run("Returns public error", func(t *testing.T) {
 		err := flamigo.NewError("some error", flamigo.Public("public error message"))
-		assert.Equal(t, "public error message", err.PublicError())
+		assert.Equal(t, "public error message", err.PublicMessage())
 	})
 	t.Run("Returns inner error when no public message", func(t *testing.T) {
 		err := flamigo.NewError("some error")
-		assert.Equal(t, "some error", err.PublicError())
+		assert.Equal(t, "some error", err.PublicMessage())
+	})
+}
+
+func TestPublicMessage(t *testing.T) {
+	t.Run("prefers explicit wrapped public message", func(t *testing.T) {
+		err := flamigo.WrapError("listing messages: %w",
+			flamigo.NewError("not found", flamigo.Public("Messages not found"), flamigo.Kind(flamigo.ErrorTypeNotFound)),
+		)
+		assert.Equal(t, "Messages not found", flamigo.PublicMessage(err))
+	})
+}
+
+func TestResolveErrorType(t *testing.T) {
+	t.Run("prefers explicit wrapped error type", func(t *testing.T) {
+		err := flamigo.WrapError("listing messages: %w",
+			flamigo.NewError("not found", flamigo.Public("Messages not found"), flamigo.Kind(flamigo.ErrorTypeNotFound)),
+		)
+		assert.Equal(t, flamigo.ErrorTypeNotFound, flamigo.ResolveErrorType(err))
 	})
 }
 

@@ -2,7 +2,7 @@
 
 In Flamigo, **everything happens through an Actor**. Actors are a fundamental concept in the framework — they represent *who* is executing a piece of logic and can carry additional context such as authentication data, session metadata, or the type of connection.
 
-This design provides a clean and unified way to propagate identity and context throughout your application. Whether you're building APIs, event listeners, or realtime features, knowing *who* triggered the action helps your logic adapt accordingly.
+This design provides a clean and unified way to propagate identity and context throughout your application. Whether you're building APIs, event listeners, or realtime adapters, knowing *who* triggered the action helps your logic adapt accordingly.
 
 ---
 
@@ -33,7 +33,7 @@ type Context interface {
 
 By using this extended context, you gain seamless access to actor-related metadata in your services, listeners, or handlers.
 
-Theres helpers to check if a actor exists:
+There are helpers to validate and retrieve actors:
 ```go
 func RequireActorWithClaims[T Actor](ctx Context, opts ...ActorClaimValidator) (parsedActor T, err error)
 ```

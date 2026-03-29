@@ -1,0 +1,43 @@
+package websocket
+
+import (
+	flamigo "github.com/amberbyte/flamigo/core"
+	"github.com/amberbyte/flamigo/events"
+	"github.com/amberbyte/flamigo/strategies"
+	auth "{{.ProjectModulePath}}/internal/domains/auth/domain"
+	authEvents "{{.ProjectModulePath}}/internal/domains/auth/domain/events"
+	"{{.ProjectModulePath}}/pkg/validation"
+)
+
+type authPayload struct {
+	Token string `json:"token"`
+}
+
+func websocketAuthStrategy(authService auth.Service, strategyRegistry strategies.AppRegistry, pubsub events.AppBus) error {
+	strategy := func(ctx strategies.Context) {
+		actor, err := flamigo.RequireActorWithClaims[*Actor](ctx, IsWebsocket())
+		if err != nil {
+			ctx.Response().SetError(ErrInvalidActor)
+			return
+		}
+
+		payload := authPayload{}
+		if err := validation.BindAndValidate(ctx.Request(), &payload); err != nil {
+			ctx.Response().SetError(err)
+			return
+		}
+		currentUser, err := authService.VerifyToken(ctx, payload.Token)
+		if err != nil {
+			ctx.Response().SetError(err)
+			return
+		}
+		c := actor.client
+		c.registerUser(currentUser)
+		ctx.Response().SetPayload(struct {
+			Success bool `json:"success"`
+		}{true})
+		pubsub.Publish(authEvents.NewUserAuthenticated(*currentUser), newWebsocketActor(c))
+	}
+
+	return strategyRegistry.Register("websocket:auth", strategy)
+}

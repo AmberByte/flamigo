@@ -1,63 +1,114 @@
 # Contributing to Flamigo
 
-First off, thanks for considering contributing to **Flamigo**!  
-This project thrives on collaboration, and your ideas, code, and feedback are always welcome.
+Thanks for contributing to Flamigo.
 
-## 🛠 What You Can Help With
+Flamigo is an open source Go backend framework focused on hexagonal architecture, domain-first design, and reusable transport adapters. Contributions are welcome across code, docs, templates, bug reports, and examples.
 
-Whether it's fixing a bug, improving documentation, or suggesting a new pattern for domain structuring — it's all valuable. Some great ways to contribute include:
+## Before You Start
 
-- Reporting bugs and edge cases
-- Proposing improvements to the domain design or architecture
-- Creating utilities or helpers
-- Expanding the documentation or examples
-- Building tooling around Flamigo's philosophy
+Flamigo is still pre-`1.0`.
 
-## 🧑‍💻 Development Setup
+That means contributions should favor:
 
-To get started locally:
+- clear architecture over convenience-driven complexity
+- small, composable framework primitives
+- app-owned policy where possible
+- consistency between framework code, docs, and generated templates
 
-1. Clone the repo:
-   ```bash
-   git clone https://github.com/amberbyte/flamigo.git
-   cd flamigo
-   ```
+## Good Ways to Contribute
 
-2. Run tests:
-   ```bash
-   go test ./...
-   ```
+Useful contributions include:
 
-We aim to keep the codebase idiomatic, modular, and clean — please follow existing conventions wherever possible.
+- bug reports with clear reproduction steps
+- documentation improvements
+- template fixes and generated project cleanup
+- tests for missing edge cases
+- API ergonomics improvements
+- transport adapter improvements
+- examples from real app usage
 
-## Commit Style
+## Discussing Changes
 
-We use [Conventional Commits](https://www.conventionalcommits.org/) to keep our history readable and semantically meaningful. Examples:
+For small fixes, typo fixes, missing tests, and focused bug fixes, a pull request is usually fine directly.
 
-- `feat(domain): add user aggregate`
-- `fix: handle nil pointer in event dispatcher`
-- `docs: improve getting started section`
+For larger changes, architecture changes, new public APIs, or new optional features, please open an issue first so the direction can be discussed before implementation starts.
 
-This helps with changelogs and versioning.
+Examples of changes that should be discussed first:
 
-## 🚀 Making a Pull Request
+- new top-level packages
+- changes to generated project structure
+- new framework-level abstractions
+- changes that introduce or remove dependencies
+- changes that affect public APIs or expected architecture
 
-When you're ready to contribute:
+## Development Setup
 
-1. Fork the repo
-2. Create a new branch:  
-   `git checkout -b feat/your-branch-name`
-3. Make your changes
-4. Commit using a conventional message
-5. Push to your fork
-6. Open a pull request
+Requirements:
 
-Your PR doesn't need to be perfect — we’re happy to help polish or discuss trade-offs.
+- Go installed locally
 
-## 💬 Need Help?
+Run the test suite:
 
-Open an issue, start a discussion, or ping us on the GitHub repo
+```bash
+go test ./...
+```
 
----
+If you change generated templates, documentation, or public APIs, make sure the related parts stay aligned.
 
-Thanks again for helping shape Flamigo!  
+## Project Expectations
+
+When contributing, please keep these expectations in mind:
+
+- keep the framework small and focused
+- avoid moving app-specific policy into framework core
+- prefer explicit boundaries between domains, strategies, events, and adapters
+- keep transport concerns inside transport adapters
+- keep generated templates consistent with the framework and the docs
+
+In practice, that often means:
+
+- `events` should stay transport-agnostic
+- `strategies` should express application actions, not transport details
+- adapters should connect the outside world to the application core
+- convenience helpers should not force unnecessary dependencies into core packages
+
+## Pull Requests
+
+A good pull request usually:
+
+- has a clear and narrow scope
+- includes tests when behavior changes
+- updates docs when public behavior changes
+- updates templates when generated app behavior changes
+- explains any architectural tradeoffs
+
+If your change introduces breaking behavior, call that out clearly in the pull request description.
+
+## Documentation and Templates
+
+For Flamigo, docs and templates are part of the product.
+
+If you change:
+
+- public package APIs
+- generated project structure
+- transport scaffolding
+- framework terminology
+
+then please update the relevant docs and templates in the same change when possible.
+
+## Release Expectations
+
+Flamigo intends to follow semantic versioning.
+
+Before `1.0.0`, some breaking changes may still happen between releases. Contributions should therefore aim to improve clarity and long-term direction, not just add more surface area.
+
+## Questions
+
+If you are unsure whether an idea fits the project, open an issue and describe:
+
+- the problem you are trying to solve
+- why the change belongs in the framework instead of app code
+- what tradeoffs the proposal introduces
+
+That makes it much easier to review the idea well.

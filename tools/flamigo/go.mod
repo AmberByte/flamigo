@@ -1,6 +1,6 @@
 module github.com/amberbyte/flamigo/tools/flamigo
 
-go 1.24.1
+go 1.25.8
 
 require (
 	github.com/charmbracelet/huh v0.6.0

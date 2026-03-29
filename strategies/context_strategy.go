@@ -4,10 +4,10 @@ import (
 	flamigo "github.com/amberbyte/flamigo/core"
 )
 
-type StrategyResult interface {
+type Result interface {
 	IsOk() bool
 	IsError() bool
-	Result() interface{}
+	Payload() interface{}
 	Err() error
 }
 
@@ -37,7 +37,7 @@ func (c *strategyContext) Response() *Response {
 func NewContext(ctx flamigo.Context, action string, payload interface{}) Context {
 	return &strategyContext{
 		Context:  ctx,
-		request:  &Request{action: action, payload: payload},
+		request:  NewRequest(action, payload),
 		response: &Response{strategyTopic: action},
 	}
 }

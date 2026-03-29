@@ -1,49 +1,74 @@
-# Flamigo  
-*A Domain-Driven Go Framework*
-> [!IMPORTANT]  
-> Flamigo currently is in a preview state. Tools may fail, and are in a very early stage. I'm using flamigo itself for some of my projects where I extracted it. Therefore there might be some loose ends still.
+# Flamigo
 
-If you run into any issues please open a Issue
+Hexagonal, event-driven Go backend framework.
 
-![flamigo](docs/assets/logo.png)
+> [!IMPORTANT]
+> Flamigo is still pre-1.0. The architecture is already usable, but APIs, templates, and tooling may still change between releases.
 
----
+![flamigo](docs/public/logo.png)
 
-**Flamigo** is a lightweight and opinionated Go framework built around **Domain-Driven Design (DDD)** principles. It gives you structure without getting in your way — offering a clean architecture where domains, aggregates, and events are first-class citizens.
+## What Flamigo Is
 
-Whether you're working on a game backend, a microservice, or a monolith, Flamigo helps you write code that's easy to reason about, easy to scale, and fun to build on.
+Flamigo is a backend framework for Go projects that want:
 
-## 🦩 Why Flamigo?
+- domain-first structure
+- hexagonal architecture
+- event-driven coordination between domains
+- transport adapters for HTTP and WebSocket-style applications
+- lightweight dependency injection for startup wiring
 
-Flamigo puts Domain principles at the heart of your application, encouraging you to think in terms of business logic and domain boundaries. With a modular design, clear separation of concerns, and minimal dependencies, it keeps things lean and understandable. Event-driven patterns are baked in from the start, making it easy to decouple logic without resorting to brittle hacks.
+It is designed for applications like game backends, internal platforms, modular monoliths, and services where domain boundaries matter more than raw CRUD scaffolding.
 
-You get all the power of Go — fast builds, static typing, and simplicity — without sacrificing structure or long-term maintainability.
+## What Flamigo Is Not
+
+Flamigo is not trying to be:
+
+- a full ORM or database framework
+- a batteries-included auth product
+- a frontend framework
+- a giant “everything included” web framework
+
+The framework gives you structure and reusable primitives. Application policy, persistence details, and adapter behavior still live in your app.
+
+## Core Ideas
+
+- `domains` hold business logic and domain contracts
+- `events` carry domain events across the application
+- `strategies` provide application actions that transports can invoke
+- `adapters` connect the system to the outside world
+- `injection` wires everything together at startup
 
 ## Getting Started
 
-Install the CLI tool:
+Install the CLI:
 
 ```bash
 go install github.com/amberbyte/flamigo/tools/flamigo@latest
 ```
 
-Then start a new project:
+Create a project:
 
 ```bash
 flamigo init
 ```
 
-This start a wizard and sets up the basic structure
+The wizard scaffolds a project and lets you enable optional features like:
 
-## Docs
+- `auth`
+- `transport_http`
+- `transport_websocket`
 
-Documentation, examples, and design guides are available at  
-👉 [flamigo.amberbyte.dev](https://flamigo.amberbyte.dev)
+## Documentation
+
+Documentation and guides are available at:
+
+[Documentation](https://flamigo.amberbyte.dev)
+[GoDoc](https://pkg.go.dev/github.com/amberbyte/flamigo)
 
 ## Contributing
 
-Pull requests, ideas, and issues are always welcome. If you're into Domain-Driven Go, we’d love your input. Check out [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
+Issues, ideas, and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-MIT — do whatever you want, just don’t remove the flamingo.
+MIT

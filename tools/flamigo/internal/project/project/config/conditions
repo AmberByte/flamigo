@@ -1,1 +1,0 @@
-{{if .HasFeature "config"}}true{{end}}

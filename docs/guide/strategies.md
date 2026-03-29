@@ -8,7 +8,7 @@ This design offers:
 
 - A unified abstraction over different transport layers (HTTP, WebSocket, CLI, etc.)
 - The ability to call strategies from anywhere — including other strategies or domain listeners
-- A testable, reusable structure for external interfaces
+- A testable, reusable structure for external adapters
 - A generalized pattern that can be reused across different domains and contexts
 
 ---
@@ -25,17 +25,36 @@ type StrategyFunc func(ctx strategies.Context)
 
 ## Registering Strategies
 
-Strategies are registered by name — usually in the `internal/api/` layer — and grouped logically by application area or domain.
+Strategies are registered by local action name — usually in the `internal/api/` layer — and grouped logically by application area or domain.
 
 ```go
-registry := strategies.NewRegistry("app")
+appRegistry := strategies.NewRegistry[strategies.Context]()
 
-registry.Register("app::domain:doSth", func(ctx strategies.Context) {
+if err := appRegistry.Register("domain:doSth", func(ctx strategies.Context) {
   // Strategy logic here
-})
+}); err != nil {
+  panic(err)
+}
 ```
 
-You can register multiple strategies under one registry, following a consistent naming convention (e.g. `app::domain:action`).
+`Register` expects a local action name such as `domain:action`. It returns an error for invalid names or duplicate registrations.
+
+::: warning
+Register registries and strategies during startup only. The strategies package is configured to be wired up at application initialization time, not mutated during normal runtime.
+:::
+
+If you want to manage multiple namespaces, use a router above the local registries:
+
+```go
+appRegistry := strategies.NewRegistry[strategies.Context]()
+adminRegistry := strategies.NewRegistry[strategies.Context]()
+
+router := strategies.NewRouter[strategies.Context]()
+router.Register("app", appRegistry)
+router.Register("admin", adminRegistry)
+```
+
+If you expose strategies over HTTP, keep route binding in the HTTP adapter layer, but register routes close to the strategy itself through an injected route registrar.
 
 ---
 
@@ -48,12 +67,14 @@ type Request interface {
   Action() string      // The action name (e.g. app::domain:doSth)
   Payload() any        // The raw payload sent to the strategy
   Bind(target any) error // Decode the payload (typically JSON) into a target struct
+  SetAttribute(key string, value any)
+  Attribute(key string) (any, bool)
 }
 
 type Response interface {
-  SetResult(payload any) string // Sets the result to return from the strategy
+  SetPayload(payload any)       // Sets the payload to return from the strategy
   SetError(err error)           // Sets an error as the result
-  Result() any
+  Payload() any
   Err() error
   IsOk() bool
   IsError() bool
@@ -62,18 +83,22 @@ type Response interface {
 
 This setup provides everything your strategy needs to process input, work with actors, and respond in a consistent and structured way.
 
+Transport-specific metadata should be attached as request attributes rather than added directly to the strategy API. For example, an HTTP adapter can attach method, path params, query params, or headers under keys like `http.method`, `http.path_params`, and `http.query`.
+
 ---
 
 ## Calling Strategies
 
-To call a strategy, you compose a strategy context with the appropriate `flamingo.Context`, action and payload, then invoke it through the registry:
+To call a strategy, you compose a strategy context with the appropriate `flamingo.Context`, full action, and payload, then invoke it through the router:
 
 ```go
-registry := strategies.NewRegistry("app")
+appRegistry := strategies.NewRegistry[strategies.Context]()
+router := strategies.NewRouter[strategies.Context]()
+router.Register("app", appRegistry)
 
 ctx := strategies.NewContext(flamigoCtx, "app::foo:bar", `{"foo": "bar"}`)
 
-result := registry.Use(ctx)
+result := router.Invoke(ctx)
 
 if result.IsOk() {
   // Handle success

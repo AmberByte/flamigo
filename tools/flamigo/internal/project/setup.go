@@ -14,6 +14,7 @@ var defaultDirectories = []string{
 	"{root}/internal/domains",
 	"{root}/internal/api",
 	"{root}/internal",
+	"{root}/pkg",
 	"{root}/interfaces",
 }
 

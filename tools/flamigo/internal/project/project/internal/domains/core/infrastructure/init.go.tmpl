@@ -3,21 +3,29 @@ package core_infra
 import (
 	"github.com/amberbyte/flamigo/injection"
 
-	"github.com/amberbyte/flamigo/realtime"
+	"github.com/amberbyte/flamigo/events"
 	"github.com/amberbyte/flamigo/strategies"
 )
 
-func Init(injector injection.DependencyManager) error {
+func Init(injector injection.Container) error {
 	// Initialize the strategie registry
-	registry := strategies.NewRegistry[strategies.Context]("app")
-
-	// Initialize the event bus
-	events := realtime.NewBus[realtime.Event]()
-	if err := injector.AddInjectable(registry); err != nil {
+	appRegistry := strategies.NewRegistry[strategies.Context]()
+	router := strategies.NewRouter[strategies.Context]()
+	if err := router.Register("app", appRegistry); err != nil {
 		return err
 	}
 
-	if err := injector.AddInjectable(events); err != nil {
+	// Initialize the event bus
+	eventBus := events.NewBus[events.Event]()
+	if err := injector.Register(appRegistry); err != nil {
+		return err
+	}
+
+	if err := injector.Register(router); err != nil {
+		return err
+	}
+
+	if err := injector.Register(eventBus); err != nil {
 		return err
 	}
 	return nil

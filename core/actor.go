@@ -11,7 +11,7 @@ var (
 	ErrNotAuthenticated = errors.New("actor is not authenticated")
 	ErrNoPermission     = errors.New("actor does not have permission")
 	ErrAuthenticated    = errors.New("actor is authenticated")
-	ErrInvalidActorType = errors.New("actor does not fullfill the required type")
+	ErrInvalidActorType = errors.New("actor does not fulfill the required type")
 )
 
 const (

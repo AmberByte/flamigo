@@ -3,9 +3,9 @@
 layout: home
 
 hero:
-  name: "Flamigo (Preview)"
-  text: "Domain Driven Go"
-  tagline: Scalable Backend Framework for building Domain Driven Go Backends
+  name: "Flamigo"
+  text: "Hexagonal, Event-Driven Go"
+  tagline: A backend framework for domain-first Go applications
   image:
     src: ./logo.png
     alt: Logo
@@ -13,25 +13,28 @@ hero:
     - theme: brand
       text: Getting Started
       link: /guide/introduction.html
+    - theme: alt
+      text: GitHub
+      link: https://github.com/amberbyte/flamigo
 features:
-  - title: Dependency Injection
-    details: Flamigo uses a fully decoupled architecture, with all components provided via dependency injection.
-  - title: Event-Driven
-    details: Domains communicate seamlessly through a robust event-driven system.
-  - title: Real-Time Support
-    details: Built-in support for real-time communication with the frontend.
+  - title: Domain-First Structure
+    details: Organize applications around domains, strategies, events, and adapters instead of transport-first folders.
+  - title: Event Bus
+    details: Coordinate domains through explicit domain events without coupling everything directly together.
+  - title: Transport Adapters
+    details: Reuse framework transport primitives for HTTP and WebSocket adapters while keeping app behavior local.
 
 ---
 
 ## Why Flamigo?
 
-Flamigo is designed to simplify backend development by providing:
+Flamigo is designed for Go backends that want architectural structure without turning into a giant framework.
 
-- **Domain-Driven Design**: Encourages clean architectural patterns for scalable and maintainable codebases.
-- **Event-Driven Communication**: Built-in support for event-driven systems to decouple domains.
-- **Real-Time Features**: Seamless integration with WebSockets for real-time communication.
-- **Dependency Injection**: Fully decoupled architecture with dependency injection for better testability and modularity.
-- **Go Ecosystem**: Built on proven Go libraries like `gorilla`, ensuring reliability and performance.
+It works especially well for:
 
-Whether you're building microservices or monoliths, Flamigo helps you focus on your business logic without getting bogged down by boilerplate.
+- game backends
+- modular monoliths
+- internal backends with multiple adapters
+- services where domain boundaries and event flow matter
 
+It is not trying to be an ORM, a frontend stack, or a highly opinionated full web platform.

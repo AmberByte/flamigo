@@ -32,6 +32,7 @@ export default defineConfig({
         items: [
           { text: 'Introduction', link: '/introduction' },
           { text: 'First Steps', link: '/first-steps' },
+          { text: 'Stability', link: '/stability' },
         ]
       },
       {
@@ -53,16 +54,22 @@ export default defineConfig({
           { text: 'Structure', link: '/structure' },
           { text: '/api', link: '/api' },
           { text: '/domains', link: '/domains' },
-          { text: '/interfaces', link: '/interfaces' },
+          { text: '/adapters', link: '/adapters' },
         ]
       },
       {
         base: '/guide',
-        text: 'Features',
+        text: 'Adapters',
+        items: [
+          { text: 'HTTP', link: '/http' },
+          { text: 'Websocket', link: '/websocket' },
+        ]
+      },
+      {
+        base: '/guide',
+        text: 'Optional Features',
         items: [
           { text: 'Auth', link: '/auth' },
-          { text: 'Websocket', link: '/websocket' },
-          { text: 'Config', link: '/config' },
         ]
       },
     ],

@@ -3,7 +3,7 @@
 Authentication in Flamigo is built as a dedicated domain, responsible for handling user identities and login state.  
 
 ::: warning
-The config module can only be enabled when initializing a new project.
+This feature can only be enabled when initializing a new project.
 :::
 
 The auth domain provides:
@@ -85,7 +85,7 @@ To integrate OAuth2, a login service could look like the following
 func OAuth2Login(ctx flamigo.Context, token string) (*auth.User, error) {
     userInfo, err := oauth2.ValidateToken(token)
     if err != nil {
-        return nil, flamigo.NewError("invalid token", flamigo.WithPublicResponse("Authentication failed."))
+        return nil, flamigo.NewError("invalid token", flamigo.Public("Authentication failed."), flamigo.Kind(flamigo.ErrorTypeUnauthorized))
     }
 
     user := &auth.User{

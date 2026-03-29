@@ -1,0 +1,7 @@
+package websocket
+
+import "github.com/amberbyte/flamigo/events"
+
+func TopicUserDisconnected(userID string) events.Topic {
+	return events.NewTopic("user", "disconnected", userID)
+}

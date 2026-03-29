@@ -1,0 +1,14 @@
+package websocket
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestActor(t *testing.T) {
+	t.Run("Type", func(t *testing.T) {
+		actor := newWebsocketActor(nil)
+		assert.Equal(t, ActorType, actor.Type())
+	})
+}

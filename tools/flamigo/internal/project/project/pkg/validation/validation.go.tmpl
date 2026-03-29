@@ -1,0 +1,93 @@
+package validation
+
+import (
+	"errors"
+	"fmt"
+	"reflect"
+	"strings"
+
+	flamigo "github.com/amberbyte/flamigo/core"
+	"github.com/amberbyte/flamigo/strategies"
+	"github.com/go-playground/validator/v10"
+)
+
+var validate = newValidator()
+
+type Error struct {
+	err         error
+	fieldErrors []flamigo.FieldError
+}
+
+func (e *Error) Error() string {
+	return e.err.Error()
+}
+
+func (e *Error) Unwrap() error {
+	return e.err
+}
+
+func (e *Error) FieldErrors() []flamigo.FieldError {
+	return e.fieldErrors
+}
+
+func newValidator() *validator.Validate {
+	v := validator.New()
+	v.RegisterTagNameFunc(func(fld reflect.StructField) string {
+		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+		if name == "-" {
+			return ""
+		}
+		return name
+	})
+	return v
+}
+
+func Register(tag string, fn validator.Func) error {
+	return validate.RegisterValidation(tag, fn)
+}
+
+func Validate(obj any) error {
+	err := validate.Struct(obj)
+	if err == nil {
+		return nil
+	}
+
+	var validationErr validator.ValidationErrors
+	if errors.As(err, &validationErr) {
+		return &Error{
+			err:         err,
+			fieldErrors: formatValidationError(validationErr),
+		}
+	}
+
+	return err
+}
+
+func BindAndValidate(req *strategies.Request, target any) error {
+	if err := req.Bind(target); err != nil {
+		return err
+	}
+	return Validate(target)
+}
+
+func formatValidationError(err validator.ValidationErrors) []flamigo.FieldError {
+	formatted := make([]flamigo.FieldError, 0, len(err))
+	for _, e := range err {
+		formatted = append(formatted, flamigo.FieldError{
+			Field: e.Field(),
+			Error: formatFieldError(e),
+		})
+	}
+	return formatted
+}
+
+func formatFieldError(fe validator.FieldError) string {
+	switch fe.Tag() {
+	case "required":
+		return fmt.Sprintf("%s is required", fe.Field())
+	case "oneof":
+		return fmt.Sprintf("%s must be one of %s", fe.Field(), strings.ReplaceAll(fe.Param(), " ", ","))
+	default:
+		return fmt.Sprintf("%s failed for %s", fe.Field(), fe.Tag())
+	}
+}

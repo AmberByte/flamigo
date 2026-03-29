@@ -1,0 +1,45 @@
+package http
+
+import (
+	"context"
+	"errors"
+	stdhttp "net/http"
+
+	flamigo "github.com/amberbyte/flamigo/core"
+)
+
+const ActorType string = "http"
+
+var (
+	ErrInvalidActor = errors.New("actor is not a http actor")
+)
+
+var _ flamigo.Actor = (*Actor)(nil)
+
+type Actor struct{}
+
+func (a *Actor) Type() string {
+	return ActorType
+}
+
+func newActor(r *stdhttp.Request, w stdhttp.ResponseWriter) (flamigo.Actor, error) {
+	return &Actor{}, nil
+}
+
+func IsHTTP() flamigo.ActorClaimValidator {
+	return func(ctx context.Context, actor flamigo.Actor) error {
+		if actor.Type() != ActorType {
+			return ErrInvalidActor
+		}
+		return nil
+	}
+}
+
+func IsNotHTTP() flamigo.ActorClaimValidator {
+	return func(ctx context.Context, actor flamigo.Actor) error {
+		if actor.Type() == ActorType {
+			return ErrInvalidActor
+		}
+		return nil
+	}
+}

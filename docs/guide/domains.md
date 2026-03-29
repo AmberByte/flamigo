@@ -56,7 +56,7 @@ func (d *domain) Addresses() messages.AddressRepository {
 ```go
 package messages_infra
 
-func Init(inj injection.DependencyManager, db database.Database) error {// [!code ++:11]
+func Init(inj injection.Container, db database.Database) error {// [!code ++:11]
   messageRepo := newMessageRepo(db)
   addressRepo := newAddressRepo(db)
 
@@ -65,7 +65,7 @@ func Init(inj injection.DependencyManager, db database.Database) error {// [!cod
     adr: addressRepo
   }
 
-  return inj.AddInjectable(dmn)
+  return inj.Register(dmn)
 }
 
 var _ messages.Domain = (*domain)(nil)
@@ -106,10 +106,10 @@ var initializers = []any{
 }
 
 func main() {
-	injector := injection.NewInjecter()
+	injector := injection.NewInjector()
 
 	for _, init := range initializers {
-		err = injector.Execute(init)
+		err = injector.Invoke(init)
 		if err != nil {
 			fmt.Printf("Error: %s", err.Error())
 		}
