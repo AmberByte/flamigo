@@ -36,6 +36,8 @@ The scaffold gives you a project shaped around:
 
 The generated `cmd/main.go` wires packages through dependency injection during startup.
 
+It also configures application logging with `log/slog`, which Flamigo uses internally for framework logs as well.
+
 In practice, the typical flow is:
 
 1. initialize core framework pieces
@@ -43,6 +45,8 @@ In practice, the typical flow is:
 3. register API strategies
 4. initialize adapters
 5. start transport servers
+
+If you need to route or filter framework logs separately, see the [Logging](/guide/logging) guide.
 
 ## 5. Add your first strategy
 

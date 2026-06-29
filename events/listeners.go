@@ -1,6 +1,11 @@
 package events
 
-import "github.com/sirupsen/logrus"
+import (
+	"fmt"
+	"log/slog"
+
+	flamigo "github.com/amberbyte/flamigo"
+)
 
 type ForwarderListener[T Event] func(message T)
 type BusListener[T Event] func(context Context, message T)
@@ -18,6 +23,11 @@ func ListenerOnEvent[T Event](listener BusListener[T]) AppListener {
 			listener(context, typed)
 			return
 		}
-		logrus.Debugf("unsupported event type: %T", message)
+		flamigo.Logger().Debug(
+			"unsupported event type",
+			slog.String("component", "events"),
+			slog.String("code", "unsupported_event_type"),
+			slog.String("event_type", fmt.Sprintf("%T", message)),
+		)
 	}
 }

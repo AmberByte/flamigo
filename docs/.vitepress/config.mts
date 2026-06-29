@@ -42,6 +42,7 @@ export default defineConfig({
           { text: 'Actors', link: '/actors' },
           { text: 'Dependency Injection', link: '/dependency-injection' },
           { text: 'Event Bus', link: '/realtime' },
+          { text: 'Logging', link: '/logging' },
           { text: 'Strategies', link: '/strategies' },
           { text: 'Error Handling', link: '/errors' },
           { text: 'Mocking', link: '/mocking' },

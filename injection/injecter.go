@@ -3,9 +3,10 @@ package injection
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"reflect"
 
-	"github.com/sirupsen/logrus"
+	flamigo "github.com/amberbyte/flamigo"
 )
 
 type Registrar interface {
@@ -80,7 +81,12 @@ func (injector *Injector) Register(i any) error {
 		return errAlreadyRegistered(t)
 	}
 	injector.injectables[t] = v
-	logrus.Debugf("Added injectable: %s", t.String())
+	flamigo.Logger().Debug(
+		"added injectable",
+		slog.String("component", "injection"),
+		slog.String("code", "added_injectable"),
+		slog.String("type", t.String()),
+	)
 	return nil
 }
 

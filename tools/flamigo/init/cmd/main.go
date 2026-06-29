@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
+	"os"
 	"reflect"
 	"runtime"
 	"strings"
@@ -11,13 +13,6 @@ import (
 	
 	
 )
-
-func init() {
-	logrus.SetFormatter(&logrus.TextFormatter{
-		ForceColors: true,
-	})
-}
-
 var initializers = []any{
 	//------------  Core domains and packages
 	
@@ -60,19 +55,22 @@ func getFunctionPackageName(f interface{}) string {
 }
 
 func main() {
-	logrus.SetLevel(logrus.DebugLevel)
-	lgr.Info("Starting init backend")
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})))
+	slog.Info("starting init backend")
 	injector := injection.NewInjector()
 
 	for _, init := range initializers {
 		err := validInitializer(init)
 		if err != nil {
-			lgr.Fatalf("verifying initializer (#%s): %s", getFunctionPackageName(init), err)
+			slog.Error("verifying initializer", "initializer", getFunctionPackageName(init), "error", err)
+			os.Exit(1)
 		}
 		err = injector.Invoke(init)
 		if err != nil {
-
-			lgr.Fatalf("initializing (%s): %s", getFunctionPackageName(init), err)
+			slog.Error("initializing", "initializer", getFunctionPackageName(init), "error", err)
+			os.Exit(1)
 		}
 	}
 }

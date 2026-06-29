@@ -65,6 +65,45 @@ Documentation and guides are available at:
 [Documentation](https://flamigo.amberbyte.dev)
 [GoDoc](https://pkg.go.dev/github.com/amberbyte/flamigo)
 
+## Logging
+
+Flamigo framework internals use Go's standard `log/slog` package and scope framework records with `library=flamigo`.
+
+If you already use `slog` in your app, setting the default logger is enough:
+
+```go
+import (
+	"log/slog"
+	"os"
+)
+
+func init() {
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})))
+}
+```
+
+If you want Flamigo to use a dedicated logger instead of the global default, set it explicitly:
+
+```go
+import (
+	flamigo "github.com/amberbyte/flamigo"
+	"log/slog"
+	"os"
+)
+
+func init() {
+	flamigo.SetLogger(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})))
+}
+```
+
+To suppress one noisy framework debug record while keeping other debug logs, wrap the handler with `flamigo.NewFilterHandler` and filter by structured attributes such as `component` and `code`.
+
+If your app still uses `logrus`, bridge Flamigo's `slog` logger into a custom `slog.Handler` and pass it to `flamigo.SetLogger(...)`. See [docs/guide/logging.md](docs/guide/logging.md) for a full example.
+
 ## Contributing
 
 Issues, ideas, and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
