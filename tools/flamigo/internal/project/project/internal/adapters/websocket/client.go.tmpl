@@ -14,7 +14,6 @@ import (
 	"github.com/amberbyte/flamigo/strategies"
 	transportws "github.com/amberbyte/flamigo/transport/websocket"
 	{{if .HasFeature "auth"}}auth "{{.ProjectModulePath}}/internal/domains/auth/domain"{{end}}
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -87,7 +86,7 @@ func (c *Client) SendMessage(topic string, message eventclient.MessageMarshaller
 
 func (c *Client) sendRaw(rawMessage []byte, err error) {
 	if err != nil {
-		logrus.Errorf("Could not marshal response: %v", err)
+		flamigo.Logger().Error("could not marshal websocket response", "error", err)
 		return
 	}
 	c.sendData <- rawMessage
@@ -133,14 +132,14 @@ func (c *Client) readPump() {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				logrus.Printf("error: %v", err)
+				flamigo.Logger().Warn("unexpected websocket close", "error", err)
 			}
-			logrus.Println("Connection closed with err", err)
+			flamigo.Logger().Debug("websocket connection closed", "error", err)
 			break
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
 		if err := c.dispatcher.HandleMessage(context.Background(), message, c.enqueueMessage); err != nil {
-			logrus.Printf("Could not handle message: %v", err)
+			flamigo.Logger().Warn("could not handle websocket message", "error", err)
 			continue
 		}
 	}

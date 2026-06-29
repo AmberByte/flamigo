@@ -6,7 +6,6 @@ import (
 
 	flamigo "github.com/amberbyte/flamigo/core"
 	"github.com/amberbyte/flamigo/strategies"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -27,10 +26,6 @@ func (s *MockContext) Request() *strategies.Request {
 
 func (s *MockContext) Response() *strategies.Response {
 	return s.response
-}
-
-func (s *MockContext) Logger() *logrus.Entry {
-	return logrus.WithField("component", "strategy")
 }
 
 func (s *MockContext) AssertExpectations(t mock.TestingT) bool {
